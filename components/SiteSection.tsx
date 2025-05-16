@@ -1,0 +1,1 @@
+// SiteSection component placeholder
