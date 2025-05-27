@@ -1,1 +1,0 @@
-// UserCard component placeholder

@@ -1,1 +1,0 @@
-// StatusBadge component placeholder

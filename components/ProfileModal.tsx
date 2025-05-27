@@ -1,1 +1,0 @@
-// ProfileModal component placeholder
