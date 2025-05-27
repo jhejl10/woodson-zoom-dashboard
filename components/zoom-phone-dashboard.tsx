@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -34,11 +34,12 @@ import {
   Volume2,
   Download,
   FileAudio,
+  AlertCircle,
 } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
 import { ProfileDropdown } from "./profile-dropdown"
 import { SmartCallDock } from "./smart-call-dock"
@@ -422,6 +423,71 @@ function VoicemailItem({ voicemail }: { voicemail: (typeof voicemails)[0] }) {
 
 export function ZoomPhoneDashboard() {
   const [activeTab, setActiveTab] = useState("users")
+
+  const [phoneAccess, setPhoneAccess] = useState<{ hasAccess: boolean; error: string | null } | null>(null)
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const response = await fetch("/api/zoom/check-phone-access")
+        const data = await response.json()
+        setPhoneAccess(data)
+      } catch (error) {
+        setPhoneAccess({ hasAccess: false, error: "Failed to check phone access" })
+      }
+    }
+    checkAccess()
+  }, [])
+
+  // Show phone access warning if needed
+  if (phoneAccess && !phoneAccess.hasAccess) {
+    return (
+      <SidebarProvider>
+        <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <SidebarInset>
+          <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+            <div className="flex items-center gap-2 px-4">
+              <SidebarTrigger className="-ml-1" />
+              <Separator orientation="vertical" className="mr-2 h-4" />
+              <h1 className="text-lg font-semibold">Zoom Phone Dashboard</h1>
+            </div>
+          </header>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <Card className="border-yellow-200 bg-yellow-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-yellow-800">
+                  <AlertCircle className="h-5 w-5" />
+                  Zoom Phone Not Available
+                </CardTitle>
+                <CardDescription>Your account doesn't have access to Zoom Phone features.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-sm text-yellow-700">
+                  <p>
+                    <strong>Error:</strong> {phoneAccess.error}
+                  </p>
+                  <p className="mt-2">This usually means:</p>
+                  <ul className="list-disc list-inside mt-1 space-y-1">
+                    <li>Your Zoom account doesn't have a Zoom Phone license</li>
+                    <li>Zoom Phone isn't enabled for your organization</li>
+                    <li>Your app doesn't have the required phone scopes</li>
+                  </ul>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => (window.location.href = "/debug/endpoints")}>
+                    Debug API Access
+                  </Button>
+                  <Button variant="outline" onClick={() => window.open("https://zoom.us/pricing/phone", "_blank")}>
+                    Learn About Zoom Phone
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    )
+  }
 
   return (
     <SidebarProvider>

@@ -54,6 +54,9 @@ export default function DebugPage() {
             <Button variant="outline" onClick={testAuth}>
               Test Auth Flow
             </Button>
+            <Button variant="outline" onClick={() => (window.location.href = "/debug/endpoints")}>
+              Test API Endpoints
+            </Button>
           </div>
 
           {testResult && (
