@@ -1,73 +1,225 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Search, Phone, MessageSquare, MoreHorizontal, UserPlus, Filter, Building, Users, Circle } from "lucide-react"
+import {
+  Search,
+  Phone,
+  MessageSquare,
+  MoreHorizontal,
+  UserPlus,
+  Filter,
+  Building,
+  Users,
+  Circle,
+  CircleDot,
+  Clock,
+  Minus,
+  SortAsc,
+} from "lucide-react"
 import { UserDetailsDialog } from "./user-details-dialog"
 import { useZoomUsers } from "@/hooks/use-zoom-data"
 
-function getPresenceColor(presence: string) {
+function getPresenceIcon(presence: string) {
   switch (presence) {
     case "available":
-      return "bg-green-500"
+      return <Circle className="h-3 w-3 fill-green-500 text-green-500" />
     case "busy":
-      return "bg-red-500"
+      return <CircleDot className="h-3 w-3 fill-red-500 text-red-500" />
     case "away":
-      return "bg-yellow-500"
+      return <Clock className="h-3 w-3 fill-yellow-500 text-yellow-500" />
     case "dnd":
-      return "bg-red-600"
+      return <Minus className="h-3 w-3 fill-red-600 text-red-600" />
     case "offline":
-      return "bg-gray-400"
+      return <Circle className="h-3 w-3 fill-gray-400 text-gray-400" />
     default:
-      return "bg-gray-500"
+      return <Circle className="h-3 w-3 fill-gray-500 text-gray-500" />
   }
 }
 
-function getPresenceBadgeVariant(presence: string) {
+function getPresenceText(presence: string) {
   switch (presence) {
     case "available":
-      return "default"
+      return "Available"
     case "busy":
-      return "destructive"
+      return "Busy"
     case "away":
-      return "secondary"
+      return "Away"
     case "dnd":
-      return "destructive"
+      return "Do Not Disturb"
     case "offline":
-      return "outline"
+      return "Offline"
     default:
-      return "outline"
+      return "Unknown"
   }
+}
+
+function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) => void }) {
+  // Mock active call data - replace with real data when available
+  const isOnCall = Math.random() > 0.8 // 20% chance of being on a call
+  const callContact = isOnCall ? "+1 (555) 123-4567" : null
+
+  return (
+    <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onUserClick(user)}>
+      <CardContent className="p-4">
+        <div className="flex items-start space-x-3">
+          <div className="relative">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={user.avatar_url || "/placeholder.svg"} alt={user.name} />
+              <AvatarFallback>
+                {user.type === "common_area" ? (
+                  <Building className="h-4 w-4" />
+                ) : (
+                  user.name
+                    ?.split(" ")
+                    .map((n: string) => n[0])
+                    .join("")
+                    .slice(0, 2) || "?"
+                )}
+              </AvatarFallback>
+            </Avatar>
+            {user.presence && <div className="absolute -bottom-1 -right-1">{getPresenceIcon(user.presence)}</div>}
+          </div>
+
+          <div className="flex-1 min-w-0 space-y-1">
+            {/* 1st Row - Name and Presence Status */}
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium truncate">{user.name}</h3>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                {getPresenceIcon(user.presence)}
+                <span>{getPresenceText(user.presence)}</span>
+              </div>
+            </div>
+
+            {/* 2nd Row - Extension and Active Call */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-muted-foreground">Ext</span>
+                <Badge variant="outline" className="text-xs">
+                  {user.extension}
+                </Badge>
+              </div>
+              {isOnCall && (
+                <div className="flex items-center gap-1 text-xs text-green-600">
+                  <Phone className="h-3 w-3" />
+                  <span className="animate-pulse">{callContact}</span>
+                </div>
+              )}
+            </div>
+
+            {/* 3rd Row - Status Message and Call Icon */}
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                {user.presence_status && (
+                  <p className="text-xs text-muted-foreground truncate">{user.presence_status}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => e.stopPropagation()}>
+                      <Phone className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>
+                      <Phone className="mr-2 h-4 w-4" />
+                      Call
+                    </DropdownMenuItem>
+                    {user.type === "user" && (
+                      <DropdownMenuItem>
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        Message
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem>
+                      <MoreHorizontal className="mr-2 h-4 w-4" />
+                      More Options
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 export function UsersView() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [showUserDialog, setShowUserDialog] = useState(false)
+  const [sortBy, setSortBy] = useState<"extension" | "name">("extension")
 
   // Use real Zoom data
   const { users, loading, error, refetch } = useZoomUsers()
 
-  const filteredUsers = users.filter(
-    (user: any) =>
-      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.extension?.toString().includes(searchTerm) ||
-      user.phone_number?.includes(searchTerm),
-  )
+  // Ensure users is always an array
+  const safeUsers = Array.isArray(users) ? users : []
+
+  // Mock current user's site - replace with real data when available
+  const currentUserSite = "New York Office"
+
+  // Group users by site and sort
+  const groupedUsers = useMemo(() => {
+    const filtered = safeUsers.filter(
+      (user: any) =>
+        user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.extension?.toString().includes(searchTerm) ||
+        user.phone_number?.includes(searchTerm),
+    )
+
+    // Group by site
+    const grouped = filtered.reduce((acc: any, user: any) => {
+      const site = user.site || "Unknown Site"
+      if (!acc[site]) {
+        acc[site] = []
+      }
+      acc[site].push(user)
+      return acc
+    }, {})
+
+    // Sort users within each site
+    Object.keys(grouped).forEach((site) => {
+      grouped[site].sort((a: any, b: any) => {
+        if (sortBy === "extension") {
+          const extA = Number.parseInt(a.extension) || 0
+          const extB = Number.parseInt(b.extension) || 0
+          return extA - extB
+        } else {
+          return (a.name || "").localeCompare(b.name || "")
+        }
+      })
+    })
+
+    // Sort sites: current user's site first, then alphabetical
+    const sortedSites = Object.keys(grouped).sort((a, b) => {
+      if (a === currentUserSite) return -1
+      if (b === currentUserSite) return 1
+      return a.localeCompare(b)
+    })
+
+    return sortedSites.map((site) => ({
+      site,
+      users: grouped[site],
+    }))
+  }, [safeUsers, searchTerm, sortBy, currentUserSite])
 
   // Calculate stats
-  const totalUsers = users.length
-  const regularUsers = users.filter((u: any) => u.type === "user").length
-  const commonAreaPhones = users.filter((u: any) => u.type === "common_area").length
-  const availableUsers = users.filter((u: any) => u.presence === "available").length
+  const totalUsers = safeUsers.length
+  const regularUsers = safeUsers.filter((u: any) => u.type === "user").length
+  const commonAreaPhones = safeUsers.filter((u: any) => u.type === "common_area").length
+  const availableUsers = safeUsers.filter((u: any) => u.presence === "available").length
 
   const handleUserClick = (user: any) => {
     setSelectedUser(user)
@@ -81,9 +233,9 @@ export function UsersView() {
           <h2 className="text-2xl font-bold">Users</h2>
           <Button onClick={refetch}>Retry</Button>
         </div>
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
           <CardContent className="p-6">
-            <p className="text-red-800">Error loading users: {error}</p>
+            <p className="text-red-800 dark:text-red-200">Error loading users: {error}</p>
           </CardContent>
         </Card>
       </div>
@@ -150,6 +302,7 @@ export function UsersView() {
         </Card>
       </div>
 
+      {/* Search and Sort Controls */}
       <div className="flex items-center space-x-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -160,122 +313,103 @@ export function UsersView() {
             className="pl-8"
           />
         </div>
+        <Select value={sortBy} onValueChange={(value: "extension" | "name") => setSortBy(value)}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="extension">
+              <div className="flex items-center gap-2">
+                <SortAsc className="h-4 w-4" />
+                Sort by Extension
+              </div>
+            </SelectItem>
+            <SelectItem value="name">
+              <div className="flex items-center gap-2">
+                <SortAsc className="h-4 w-4" />
+                Sort by Name
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Users & Phones ({loading ? "..." : filteredUsers.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center space-x-4">
-                  <Skeleton className="h-10 w-10 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-[200px]" />
-                    <Skeleton className="h-4 w-[150px]" />
-                  </div>
+      {/* Users grouped by site */}
+      {loading ? (
+        <div className="space-y-6">
+          {[...Array(3)].map((_, siteIndex) => (
+            <Card key={siteIndex}>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="p-4 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <div className="space-y-2 flex-1">
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-3 w-3/4" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User/Phone</TableHead>
-                  <TableHead>Extension</TableHead>
-                  <TableHead>Phone Number</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Site</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user: any) => (
-                  <TableRow
-                    key={user.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleUserClick(user)}
-                  >
-                    <TableCell className="flex items-center space-x-3">
-                      <div className="relative">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={user.avatar_url || "/placeholder.svg"} alt={user.name} />
-                          <AvatarFallback>
-                            {user.type === "common_area" ? (
-                              <Building className="h-4 w-4" />
-                            ) : (
-                              user.name
-                                ?.split(" ")
-                                .map((n: string) => n[0])
-                                .join("")
-                                .slice(0, 2) || "?"
-                            )}
-                          </AvatarFallback>
-                        </Avatar>
-                        {user.presence && (
-                          <div
-                            className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-background ${getPresenceColor(user.presence)}`}
-                          />
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-medium">{user.name}</div>
-                        <div className="text-sm text-muted-foreground">{user.email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{user.extension}</Badge>
-                    </TableCell>
-                    <TableCell>{user.phone_number || "Not assigned"}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <Badge variant={user.status === "active" ? "default" : "secondary"}>
-                          {user.status || "Unknown"}
-                        </Badge>
-                        {user.presence && user.presence !== "unknown" && (
-                          <Badge variant={getPresenceBadgeVariant(user.presence)} className="text-xs">
-                            {user.presence}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{user.site}</TableCell>
-                    <TableCell>
-                      <Badge variant={user.type === "user" ? "default" : "secondary"}>
-                        {user.type === "user" ? "User" : "Common Area"}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {groupedUsers.map(({ site, users: siteUsers }) => (
+            <Card key={site}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    {site}
+                    {site === currentUserSite && (
+                      <Badge variant="default" className="text-xs">
+                        Your Site
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
-                            <Phone className="mr-2 h-4 w-4" />
-                            Call
-                          </DropdownMenuItem>
-                          {user.type === "user" && (
-                            <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
-                              <MessageSquare className="mr-2 h-4 w-4" />
-                              Message
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    )}
+                  </CardTitle>
+                  <Badge variant="outline">
+                    {siteUsers.length} {siteUsers.length === 1 ? "user" : "users"}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {siteUsers.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {siteUsers.map((user: any) => (
+                      <UserCard key={user.id} user={user} onUserClick={handleUserClick} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">No users found at this site</div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+
+          {groupedUsers.length === 0 && (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Users Found</h3>
+                <p className="text-muted-foreground">
+                  {safeUsers.length === 0
+                    ? "No users are available in your organization."
+                    : "No users match your search criteria."}
+                </p>
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
       <UserDetailsDialog user={selectedUser} open={showUserDialog} onOpenChange={setShowUserDialog} />
     </div>

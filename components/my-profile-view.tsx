@@ -10,14 +10,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PhoneIncoming, PhoneOutgoing, Phone, Voicemail, Volume2, Download } from "lucide-react"
 import { useZoomCalls, useZoomVoicemails } from "@/hooks/use-zoom-data"
 
-// REMOVED ALL MOCK DATA
-
 export function MyProfileView() {
   const [activeTab, setActiveTab] = useState("calls")
 
   // Use real Zoom data
   const { calls: callHistory, loading: callsLoading, error: callsError } = useZoomCalls("history")
   const { voicemails, loading: voicemailsLoading, error: voicemailsError } = useZoomVoicemails()
+
+  // Ensure data is always an array
+  const safeCallHistory = Array.isArray(callHistory) ? callHistory : []
+  const safeVoicemails = Array.isArray(voicemails) ? voicemails : []
 
   const getCallIcon = (call: any) => {
     if (call.direction === "inbound") {
@@ -68,7 +70,7 @@ export function MyProfileView() {
         <TabsContent value="calls" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Calls ({callsLoading ? "..." : callHistory.length})</CardTitle>
+              <CardTitle>Recent Calls ({callsLoading ? "..." : safeCallHistory.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {callsError ? (
@@ -85,7 +87,7 @@ export function MyProfileView() {
                     </div>
                   ))}
                 </div>
-              ) : callHistory.length > 0 ? (
+              ) : safeCallHistory.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -97,7 +99,7 @@ export function MyProfileView() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {callHistory.map((call: any) => {
+                    {safeCallHistory.map((call: any) => {
                       const CallIcon = getCallIcon(call)
                       return (
                         <TableRow key={call.id}>
@@ -139,7 +141,7 @@ export function MyProfileView() {
         <TabsContent value="voicemails" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Voicemails ({voicemailsLoading ? "..." : voicemails.length})</CardTitle>
+              <CardTitle>Voicemails ({voicemailsLoading ? "..." : safeVoicemails.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {voicemailsError ? (
@@ -156,9 +158,9 @@ export function MyProfileView() {
                     </div>
                   ))}
                 </div>
-              ) : voicemails.length > 0 ? (
+              ) : safeVoicemails.length > 0 ? (
                 <div className="space-y-4">
-                  {voicemails.map((voicemail: any) => (
+                  {safeVoicemails.map((voicemail: any) => (
                     <div key={voicemail.id} className="flex items-start space-x-4 p-4 border rounded-lg">
                       <div className="p-2 rounded-full bg-blue-100 text-blue-600">
                         <Voicemail className="h-4 w-4" />

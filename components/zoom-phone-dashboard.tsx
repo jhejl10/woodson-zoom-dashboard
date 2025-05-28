@@ -29,6 +29,7 @@ import { MySiteView } from "./my-site-view"
 import { MyProfileView } from "./my-profile-view"
 import { PhonebookView } from "./phonebook-view"
 import { CallRecordingsView } from "./call-recordings-view"
+import { ThemeToggle } from "./theme-toggle"
 
 import { RealTimeNotifications } from "./real-time-notifications"
 import { ConnectionStatus } from "./connection-status"
@@ -112,7 +113,9 @@ function AppSidebar({ activeTab, onTabChange }: { activeTab: string; onTabChange
                       <div className="flex-1 text-left">
                         <span className="text-sm">{item.title}</span>
                         {item.isWip && (
-                          <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-1 rounded">WIP</span>
+                          <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-1 rounded dark:bg-yellow-900 dark:text-yellow-200">
+                            WIP
+                          </span>
                         )}
                       </div>
                     </button>
@@ -196,16 +199,16 @@ export function ZoomPhoneDashboard() {
             </div>
           </header>
           <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-            <Card className="border-yellow-200 bg-yellow-50">
+            <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-yellow-800">
+                <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
                   <AlertCircle className="h-5 w-5" />
                   Zoom Phone Not Available
                 </CardTitle>
                 <CardDescription>Your account doesn't have access to Zoom Phone features.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="text-sm text-yellow-700">
+                <div className="text-sm text-yellow-700 dark:text-yellow-300">
                   <p>
                     <strong>Error:</strong> {phoneAccess.error}
                   </p>
@@ -252,6 +255,7 @@ export function ZoomPhoneDashboard() {
               <Plus className="h-4 w-4 mr-2" />
               New Call
             </Button>
+            <ThemeToggle />
             <ProfileDropdown />
           </div>
         </header>

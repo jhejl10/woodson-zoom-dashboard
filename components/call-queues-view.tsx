@@ -16,7 +16,10 @@ export function CallQueuesView() {
   // Use real Zoom data
   const { queues, loading, error, refetch } = useZoomQueues()
 
-  const filteredQueues = queues.filter(
+  // Ensure queues is always an array
+  const safeQueues = Array.isArray(queues) ? queues : []
+
+  const filteredQueues = safeQueues.filter(
     (queue: any) =>
       queue.name?.toLowerCase().includes(searchTerm.toLowerCase()) || queue.extension?.includes(searchTerm),
   )
@@ -74,7 +77,7 @@ export function CallQueuesView() {
                 </div>
               ))}
             </div>
-          ) : (
+          ) : filteredQueues.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -121,6 +124,10 @@ export function CallQueuesView() {
                 ))}
               </TableBody>
             </Table>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              {safeQueues.length === 0 ? "No call queues found" : "No queues match your search criteria"}
+            </div>
           )}
         </CardContent>
       </Card>

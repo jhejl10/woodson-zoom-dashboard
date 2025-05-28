@@ -11,7 +11,7 @@ export function QueueAlerts() {
   const { queues, loading } = useZoomQueues()
 
   useEffect(() => {
-    if (!loading && queues) {
+    if (!loading && Array.isArray(queues)) {
       // Find queues with high wait times or many waiting calls
       const urgentQueues = queues.filter((queue: any) => {
         const waitingCalls = queue.waiting_calls || 0

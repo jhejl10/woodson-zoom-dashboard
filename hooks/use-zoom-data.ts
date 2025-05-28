@@ -9,7 +9,7 @@ interface UseZoomDataOptions {
 
 export function useZoomUsers(options: UseZoomDataOptions = {}) {
   const { refreshInterval = 30000, enabled = true } = options
-  const [users, setUsers] = useState([])
+  const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -21,10 +21,11 @@ export function useZoomUsers(options: UseZoomDataOptions = {}) {
       if (!response.ok) throw new Error("Failed to fetch users")
 
       const data = await response.json()
-      setUsers(data.users || data)
+      setUsers(Array.isArray(data.users) ? data.users : Array.isArray(data) ? data : [])
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error")
+      setUsers([])
     } finally {
       setLoading(false)
     }
@@ -44,7 +45,7 @@ export function useZoomUsers(options: UseZoomDataOptions = {}) {
 
 export function useZoomCalls(type: "history" | "active" = "history", options: UseZoomDataOptions = {}) {
   const { refreshInterval = 10000, enabled = true } = options
-  const [calls, setCalls] = useState([])
+  const [calls, setCalls] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -56,10 +57,11 @@ export function useZoomCalls(type: "history" | "active" = "history", options: Us
       if (!response.ok) throw new Error("Failed to fetch calls")
 
       const data = await response.json()
-      setCalls(data.calls || data)
+      setCalls(Array.isArray(data.calls) ? data.calls : Array.isArray(data) ? data : [])
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error")
+      setCalls([])
     } finally {
       setLoading(false)
     }
@@ -79,7 +81,7 @@ export function useZoomCalls(type: "history" | "active" = "history", options: Us
 
 export function useZoomQueues(options: UseZoomDataOptions = {}) {
   const { refreshInterval = 15000, enabled = true } = options
-  const [queues, setQueues] = useState([])
+  const [queues, setQueues] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -91,10 +93,11 @@ export function useZoomQueues(options: UseZoomDataOptions = {}) {
       if (!response.ok) throw new Error("Failed to fetch queues")
 
       const data = await response.json()
-      setQueues(data.queues || data)
+      setQueues(Array.isArray(data.queues) ? data.queues : Array.isArray(data) ? data : [])
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error")
+      setQueues([])
     } finally {
       setLoading(false)
     }
@@ -114,7 +117,7 @@ export function useZoomQueues(options: UseZoomDataOptions = {}) {
 
 export function useZoomVoicemails(userId?: string, options: UseZoomDataOptions = {}) {
   const { refreshInterval = 30000, enabled = true } = options
-  const [voicemails, setVoicemails] = useState([])
+  const [voicemails, setVoicemails] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -127,10 +130,11 @@ export function useZoomVoicemails(userId?: string, options: UseZoomDataOptions =
       if (!response.ok) throw new Error("Failed to fetch voicemails")
 
       const data = await response.json()
-      setVoicemails(data.voicemails || data)
+      setVoicemails(Array.isArray(data.voicemails) ? data.voicemails : Array.isArray(data) ? data : [])
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error")
+      setVoicemails([])
     } finally {
       setLoading(false)
     }
@@ -150,7 +154,7 @@ export function useZoomVoicemails(userId?: string, options: UseZoomDataOptions =
 
 export function useZoomRecordings(options: UseZoomDataOptions = {}) {
   const { refreshInterval = 30000, enabled = true } = options
-  const [recordings, setRecordings] = useState([])
+  const [recordings, setRecordings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -162,10 +166,11 @@ export function useZoomRecordings(options: UseZoomDataOptions = {}) {
       if (!response.ok) throw new Error("Failed to fetch recordings")
 
       const data = await response.json()
-      setRecordings(data.recordings || data)
+      setRecordings(Array.isArray(data.recordings) ? data.recordings : Array.isArray(data) ? data : [])
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error")
+      setRecordings([])
     } finally {
       setLoading(false)
     }
