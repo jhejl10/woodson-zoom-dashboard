@@ -4,7 +4,7 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Phone, Loader2, Settings } from "lucide-react"
+import { Phone, Loader2, Settings } from 'lucide-react'
 
 interface ZoomAuthGuardProps {
   children: React.ReactNode
@@ -51,11 +51,6 @@ export function ZoomAuthGuard({ children }: ZoomAuthGuardProps) {
       const data = await response.json()
 
       if (data.success && data.authUrl) {
-        // Store state in sessionStorage for verification
-        if (data.state) {
-          sessionStorage.setItem("zoom_oauth_state", data.state)
-        }
-
         // Redirect to Zoom OAuth
         window.location.href = data.authUrl
       } else {
@@ -94,9 +89,7 @@ export function ZoomAuthGuard({ children }: ZoomAuthGuardProps) {
             </div>
             <CardTitle>Connect to Zoom Phone</CardTitle>
             <CardDescription>
-              {authType === "server-to-server"
-                ? "Server-to-server authentication configured"
-                : "Sign in with your Zoom account to access your phone data and manage calls"}
+              Sign in with your Zoom account to access your phone data and manage calls
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -106,47 +99,30 @@ export function ZoomAuthGuard({ children }: ZoomAuthGuardProps) {
               </div>
             )}
 
-            {authType === "server-to-server" ? (
-              <div className="text-center space-y-4">
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <p className="text-sm text-blue-600">
-                    Server-to-server authentication is configured but not working. Check your app credentials and make
-                    sure the app is activated.
-                  </p>
-                </div>
-                <Button variant="outline" onClick={() => (window.location.href = "/debug")}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Debug Configuration
-                </Button>
-              </div>
-            ) : (
-              <>
-                <Button onClick={handleLogin} className="w-full" size="lg" disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    "Connect Zoom Account"
-                  )}
-                </Button>
-                <p className="text-xs text-muted-foreground text-center mt-4">
-                  This will redirect you to Zoom's secure authentication page
-                </p>
-                <div className="mt-4 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => (window.location.href = "/debug")}
-                    className="w-full"
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    Debug Configuration
-                  </Button>
-                </div>
-              </>
-            )}
+            <Button onClick={handleLogin} className="w-full" size="lg" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                "Connect Zoom Account"
+              )}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-4">
+              This will redirect you to Zoom's secure authentication page
+            </p>
+            <div className="mt-4 pt-4 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => (window.location.href = "/debug")}
+                className="w-full"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Debug Configuration
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -24,15 +24,11 @@ export async function POST() {
       throw new Error(`Missing required environment variables: ${missingVars.join(", ")}`)
     }
 
-    // Generate state for CSRF protection
-    const state = Math.random().toString(36).substring(7)
-
-    // Build the authorization URL - NO SCOPES for basic OAuth app
+    // Build the authorization URL - simplified without state
     const params = new URLSearchParams({
       response_type: "code",
       client_id: process.env.ZOOM_CLIENT_ID,
       redirect_uri: process.env.ZOOM_REDIRECT_URI,
-      state: state,
     })
 
     const authUrl = `https://zoom.us/oauth/authorize?${params.toString()}`
@@ -44,7 +40,6 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       authUrl: authUrl,
-      state: state,
     })
   } catch (error) {
     console.error("Error creating auth URL:", error)

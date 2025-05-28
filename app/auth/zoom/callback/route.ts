@@ -4,7 +4,6 @@ import { handleZoomCallback } from "@/lib/zoom-auth"
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const code = searchParams.get("code")
-  const state = searchParams.get("state")
   const error = searchParams.get("error")
   const errorDescription = searchParams.get("error_description")
 
@@ -16,8 +15,6 @@ export async function GET(request: NextRequest) {
     hasCode: !!code,
     codeLength: code?.length,
     codePreview: code?.substring(0, 20) + "...",
-    hasState: !!state,
-    state,
     error,
     errorDescription,
   })
@@ -29,17 +26,14 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  if (!code || !state) {
-    console.error("Missing required parameters:", {
-      hasCode: !!code,
-      hasState: !!state,
-    })
-    return NextResponse.redirect(new URL("/auth/error?error=missing_parameters", request.url))
+  if (!code) {
+    console.error("Missing authorization code")
+    return NextResponse.redirect(new URL("/auth/error?error=missing_code", request.url))
   }
 
   try {
     console.log("Attempting to exchange code for tokens...")
-    const tokens = await handleZoomCallback(code, state)
+    const tokens = await handleZoomCallback(code)
     console.log("OAuth callback successful, tokens received:", {
       hasAccessToken: !!tokens.access_token,
       hasRefreshToken: !!tokens.refresh_token,
