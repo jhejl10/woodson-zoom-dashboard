@@ -33,8 +33,6 @@ import { ThemeToggle } from "./theme-toggle"
 
 import { RealTimeNotifications } from "./real-time-notifications"
 import { ConnectionStatus } from "./connection-status"
-import { LiveCallFeed } from "./live-call-feed"
-import { QueueAlerts } from "./queue-alerts"
 import { Toaster } from "sonner"
 
 const navigationItems = [
@@ -259,17 +257,7 @@ export function ZoomPhoneDashboard() {
             <ProfileDropdown />
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          {/* Add QueueAlerts at the top of the content */}
-          <QueueAlerts />
-
-          {/* Add LiveCallFeed to the sidebar or as a floating component */}
-          <div className="fixed top-20 right-4 w-80 z-40">
-            <LiveCallFeed />
-          </div>
-
-          {renderActiveView(activeTab)}
-        </div>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{renderActiveView(activeTab)}</div>
       </SidebarInset>
       <SmartCallDock />
 
