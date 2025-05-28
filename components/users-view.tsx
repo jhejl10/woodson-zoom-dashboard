@@ -72,12 +72,12 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
         <div className="flex items-start space-x-3">
           <div className="relative">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={user.avatar_url || "/placeholder.svg"} alt={user.name} />
+              <AvatarImage src={user?.avatar_url || "/placeholder.svg"} alt={user?.name || "User"} />
               <AvatarFallback>
-                {user.type === "common_area" ? (
+                {user?.type === "common_area" ? (
                   <Building className="h-4 w-4" />
                 ) : (
-                  user.name
+                  user?.name
                     ?.split(" ")
                     .map((n: string) => n[0])
                     .join("")
@@ -85,16 +85,16 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
                 )}
               </AvatarFallback>
             </Avatar>
-            {user.presence && <div className="absolute -bottom-1 -right-1">{getPresenceIcon(user.presence)}</div>}
+            {user?.presence && <div className="absolute -bottom-1 -right-1">{getPresenceIcon(user.presence)}</div>}
           </div>
 
           <div className="flex-1 min-w-0 space-y-1">
             {/* 1st Row - Name and Presence Status */}
             <div className="flex items-center justify-between">
-              <h3 className="font-medium truncate">{user.name}</h3>
+              <h3 className="font-medium truncate">{user?.name || "Unknown User"}</h3>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                {getPresenceIcon(user.presence)}
-                <span>{getPresenceText(user.presence)}</span>
+                {getPresenceIcon(user?.presence || "unknown")}
+                <span>{getPresenceText(user?.presence || "unknown")}</span>
               </div>
             </div>
 
@@ -103,7 +103,7 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
               <div className="flex items-center gap-1">
                 <span className="text-sm text-muted-foreground">Ext</span>
                 <Badge variant="outline" className="text-xs">
-                  {user.extension}
+                  {user?.extension || "N/A"}
                 </Badge>
               </div>
               {isOnCall && (
@@ -117,7 +117,7 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
             {/* 3rd Row - Status Message and Call Icon */}
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                {user.presence_status && (
+                {user?.presence_status && (
                   <p className="text-xs text-muted-foreground truncate">{user.presence_status}</p>
                 )}
               </div>
@@ -133,7 +133,7 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
                       <Phone className="mr-2 h-4 w-4" />
                       Call
                     </DropdownMenuItem>
-                    {user.type === "user" && (
+                    {user?.type === "user" && (
                       <DropdownMenuItem>
                         <MessageSquare className="mr-2 h-4 w-4" />
                         Message
@@ -163,67 +163,90 @@ export function UsersView() {
   // Use real Zoom data
   const { users, loading, error, refetch } = useZoomUsers()
 
-  // Ensure users is always an array
+  // Ensure users is always an array with proper null checks
   const safeUsers = Array.isArray(users) ? users : []
 
   // Mock current user's site - replace with real data when available
   const currentUserSite = "New York Office"
 
-  // Group users by site and sort
+  // Group users by site and sort with comprehensive error handling
   const groupedUsers = useMemo(() => {
-    const filtered = safeUsers.filter(
-      (user: any) =>
-        user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.extension?.toString().includes(searchTerm) ||
-        user.phone_number?.includes(searchTerm),
-    )
-
-    // Group by site
-    const grouped = filtered.reduce((acc: any, user: any) => {
-      const site = user.site || "Unknown Site"
-      if (!acc[site]) {
-        acc[site] = []
+    try {
+      if (!Array.isArray(safeUsers) || safeUsers.length === 0) {
+        return []
       }
-      acc[site].push(user)
-      return acc
-    }, {})
 
-    // Sort users within each site
-    Object.keys(grouped).forEach((site) => {
-      grouped[site].sort((a: any, b: any) => {
-        if (sortBy === "extension") {
-          const extA = Number.parseInt(a.extension) || 0
-          const extB = Number.parseInt(b.extension) || 0
-          return extA - extB
-        } else {
-          return (a.name || "").localeCompare(b.name || "")
+      const filtered = safeUsers.filter((user: any) => {
+        if (!user) return false
+
+        const searchLower = searchTerm.toLowerCase()
+        return (
+          (user.name && user.name.toLowerCase().includes(searchLower)) ||
+          (user.email && user.email.toLowerCase().includes(searchLower)) ||
+          (user.extension && user.extension.toString().includes(searchTerm)) ||
+          (user.phone_number && user.phone_number.includes(searchTerm))
+        )
+      })
+
+      // Group by site with null checks
+      const grouped = filtered.reduce((acc: any, user: any) => {
+        if (!user) return acc
+
+        const site = user.site || "Unknown Site"
+        if (!acc[site]) {
+          acc[site] = []
+        }
+        acc[site].push(user)
+        return acc
+      }, {})
+
+      // Sort users within each site with null checks
+      Object.keys(grouped).forEach((site) => {
+        if (Array.isArray(grouped[site])) {
+          grouped[site].sort((a: any, b: any) => {
+            if (!a || !b) return 0
+
+            if (sortBy === "extension") {
+              const extA = Number.parseInt(a.extension) || 0
+              const extB = Number.parseInt(b.extension) || 0
+              return extA - extB
+            } else {
+              const nameA = a.name || ""
+              const nameB = b.name || ""
+              return nameA.localeCompare(nameB)
+            }
+          })
         }
       })
-    })
 
-    // Sort sites: current user's site first, then alphabetical
-    const sortedSites = Object.keys(grouped).sort((a, b) => {
-      if (a === currentUserSite) return -1
-      if (b === currentUserSite) return 1
-      return a.localeCompare(b)
-    })
+      // Sort sites: current user's site first, then alphabetical
+      const sortedSites = Object.keys(grouped).sort((a, b) => {
+        if (a === currentUserSite) return -1
+        if (b === currentUserSite) return 1
+        return a.localeCompare(b)
+      })
 
-    return sortedSites.map((site) => ({
-      site,
-      users: grouped[site],
-    }))
+      return sortedSites.map((site) => ({
+        site,
+        users: Array.isArray(grouped[site]) ? grouped[site] : [],
+      }))
+    } catch (error) {
+      console.error("Error grouping users:", error)
+      return []
+    }
   }, [safeUsers, searchTerm, sortBy, currentUserSite])
 
-  // Calculate stats
+  // Calculate stats with null checks
   const totalUsers = safeUsers.length
-  const regularUsers = safeUsers.filter((u: any) => u.type === "user").length
-  const commonAreaPhones = safeUsers.filter((u: any) => u.type === "common_area").length
-  const availableUsers = safeUsers.filter((u: any) => u.presence === "available").length
+  const regularUsers = safeUsers.filter((u: any) => u && u.type === "user").length
+  const commonAreaPhones = safeUsers.filter((u: any) => u && u.type === "common_area").length
+  const availableUsers = safeUsers.filter((u: any) => u && u.presence === "available").length
 
   const handleUserClick = (user: any) => {
-    setSelectedUser(user)
-    setShowUserDialog(true)
+    if (user) {
+      setSelectedUser(user)
+      setShowUserDialog(true)
+    }
   }
 
   if (error) {
@@ -363,39 +386,40 @@ export function UsersView() {
         </div>
       ) : (
         <div className="space-y-6">
-          {groupedUsers.map(({ site, users: siteUsers }) => (
-            <Card key={site}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Building className="h-5 w-5" />
-                    {site}
-                    {site === currentUserSite && (
-                      <Badge variant="default" className="text-xs">
-                        Your Site
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <Badge variant="outline">
-                    {siteUsers.length} {siteUsers.length === 1 ? "user" : "users"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {siteUsers.length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {siteUsers.map((user: any) => (
-                      <UserCard key={user.id} user={user} onUserClick={handleUserClick} />
-                    ))}
+          {Array.isArray(groupedUsers) && groupedUsers.length > 0 ? (
+            groupedUsers.map(({ site, users: siteUsers }) => (
+              <Card key={site}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Building className="h-5 w-5" />
+                      {site}
+                      {site === currentUserSite && (
+                        <Badge variant="default" className="text-xs">
+                          Your Site
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    <Badge variant="outline">
+                      {Array.isArray(siteUsers) ? siteUsers.length : 0}{" "}
+                      {Array.isArray(siteUsers) && siteUsers.length === 1 ? "user" : "users"}
+                    </Badge>
                   </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">No users found at this site</div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-
-          {groupedUsers.length === 0 && (
+                </CardHeader>
+                <CardContent>
+                  {Array.isArray(siteUsers) && siteUsers.length > 0 ? (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {siteUsers.map((user: any) => (
+                        <UserCard key={user?.id || Math.random()} user={user} onUserClick={handleUserClick} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">No users found at this site</div>
+                  )}
+                </CardContent>
+              </Card>
+            ))
+          ) : (
             <Card>
               <CardContent className="p-8 text-center">
                 <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />

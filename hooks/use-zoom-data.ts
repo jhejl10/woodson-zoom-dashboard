@@ -21,11 +21,15 @@ export function useZoomUsers(options: UseZoomDataOptions = {}) {
       if (!response.ok) throw new Error("Failed to fetch users")
 
       const data = await response.json()
-      setUsers(Array.isArray(data.users) ? data.users : Array.isArray(data) ? data : [])
+
+      // Ensure we always set an array
+      const usersData = data?.users || data || []
+      setUsers(Array.isArray(usersData) ? usersData : [])
       setError(null)
     } catch (err) {
+      console.error("Error fetching users:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
-      setUsers([])
+      setUsers([]) // Always set empty array on error
     } finally {
       setLoading(false)
     }
@@ -57,11 +61,15 @@ export function useZoomCalls(type: "history" | "active" = "history", options: Us
       if (!response.ok) throw new Error("Failed to fetch calls")
 
       const data = await response.json()
-      setCalls(Array.isArray(data.calls) ? data.calls : Array.isArray(data) ? data : [])
+
+      // Ensure we always set an array
+      const callsData = data?.calls || data || []
+      setCalls(Array.isArray(callsData) ? callsData : [])
       setError(null)
     } catch (err) {
+      console.error("Error fetching calls:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
-      setCalls([])
+      setCalls([]) // Always set empty array on error
     } finally {
       setLoading(false)
     }
@@ -93,11 +101,15 @@ export function useZoomQueues(options: UseZoomDataOptions = {}) {
       if (!response.ok) throw new Error("Failed to fetch queues")
 
       const data = await response.json()
-      setQueues(Array.isArray(data.queues) ? data.queues : Array.isArray(data) ? data : [])
+
+      // Ensure we always set an array
+      const queuesData = data?.queues || data || []
+      setQueues(Array.isArray(queuesData) ? queuesData : [])
       setError(null)
     } catch (err) {
+      console.error("Error fetching queues:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
-      setQueues([])
+      setQueues([]) // Always set empty array on error
     } finally {
       setLoading(false)
     }
@@ -130,11 +142,15 @@ export function useZoomVoicemails(userId?: string, options: UseZoomDataOptions =
       if (!response.ok) throw new Error("Failed to fetch voicemails")
 
       const data = await response.json()
-      setVoicemails(Array.isArray(data.voicemails) ? data.voicemails : Array.isArray(data) ? data : [])
+
+      // Ensure we always set an array
+      const voicemailsData = data?.voicemails || data || []
+      setVoicemails(Array.isArray(voicemailsData) ? voicemailsData : [])
       setError(null)
     } catch (err) {
+      console.error("Error fetching voicemails:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
-      setVoicemails([])
+      setVoicemails([]) // Always set empty array on error
     } finally {
       setLoading(false)
     }
@@ -166,11 +182,15 @@ export function useZoomRecordings(options: UseZoomDataOptions = {}) {
       if (!response.ok) throw new Error("Failed to fetch recordings")
 
       const data = await response.json()
-      setRecordings(Array.isArray(data.recordings) ? data.recordings : Array.isArray(data) ? data : [])
+
+      // Ensure we always set an array
+      const recordingsData = data?.recordings || data || []
+      setRecordings(Array.isArray(recordingsData) ? recordingsData : [])
       setError(null)
     } catch (err) {
+      console.error("Error fetching recordings:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
-      setRecordings([])
+      setRecordings([]) // Always set empty array on error
     } finally {
       setLoading(false)
     }
