@@ -108,7 +108,8 @@ async function makeZoomAPIRequest(endpoint: string, options: RequestInit = {}) {
   })
 
   if (!response.ok) {
-    throw new Error(`Zoom API request failed: ${response.status} ${response.statusText}`)
+    const errorText = await response.text()
+    throw new Error(`Zoom API request failed: ${response.status} ${response.statusText} - ${errorText}`)
   }
 
   return response.json()
@@ -132,7 +133,8 @@ export async function makeZoomPhoneAPIRequest(endpoint: string, options: Request
   })
 
   if (!response.ok) {
-    throw new Error(`Zoom Phone API request failed: ${response.status} ${response.statusText}`)
+    const errorText = await response.text()
+    throw new Error(`Zoom Phone API request failed: ${response.status} ${response.statusText} - ${errorText}`)
   }
 
   return response.json()
@@ -143,7 +145,7 @@ export async function getPhoneUsers() {
   try {
     const response = await makeZoomPhoneAPIRequest("/users?page_size=100")
     console.log("Phone users response:", response)
-    return response.users || []
+    return Array.isArray(response.users) ? response.users : []
   } catch (error) {
     console.error("Error fetching phone users:", error)
     return []
@@ -188,7 +190,7 @@ export async function getCallHistory(userId?: string, from?: string, to?: string
     params.append("page_size", "50")
 
     const response = await makeZoomPhoneAPIRequest(`/call_logs?${params.toString()}`)
-    return response.call_logs || []
+    return Array.isArray(response.call_logs) ? response.call_logs : []
   } catch (error) {
     console.error("Error fetching call history:", error)
     return []
@@ -272,7 +274,7 @@ export async function muteCall(callId: string, mute: boolean) {
 export async function getCallQueues() {
   try {
     const response = await makeZoomPhoneAPIRequest("/call_queues")
-    return response.call_queues || []
+    return Array.isArray(response.call_queues) ? response.call_queues : []
   } catch (error) {
     console.error("Error fetching call queues:", error)
     return []
@@ -282,7 +284,7 @@ export async function getCallQueues() {
 export async function getCallQueueMembers(queueId: string) {
   try {
     const response = await makeZoomPhoneAPIRequest(`/call_queues/${queueId}/members`)
-    return response.members || []
+    return Array.isArray(response.members) ? response.members : []
   } catch (error) {
     console.error("Error fetching call queue members:", error)
     return []
@@ -297,7 +299,7 @@ export async function getVoicemails(userId?: string) {
     params.append("page_size", "50")
 
     const response = await makeZoomPhoneAPIRequest(`/voicemails?${params.toString()}`)
-    return response.voicemails || []
+    return Array.isArray(response.voicemails) ? response.voicemails : []
   } catch (error) {
     console.error("Error fetching voicemails:", error)
     return []
@@ -327,7 +329,7 @@ export async function getSMSMessages(userId?: string) {
     params.append("page_size", "50")
 
     const response = await makeZoomPhoneAPIRequest(`/sms?${params.toString()}`)
-    return response.messages || []
+    return Array.isArray(response.messages) ? response.messages : []
   } catch (error) {
     console.error("Error fetching SMS messages:", error)
     return []
@@ -356,21 +358,34 @@ export async function getSites() {
   try {
     const response = await makeZoomPhoneAPIRequest("/sites?page_size=100")
     console.log("Sites response:", response)
-    return response.sites || []
+    return Array.isArray(response.sites) ? response.sites : []
   } catch (error) {
     console.error("Error fetching sites:", error)
     return []
   }
 }
 
-// Common area phones
+// Common area phones - FIXED ENDPOINT
 export async function getCommonAreaPhones() {
   try {
-    const response = await makeZoomPhoneAPIRequest("/common_area_phones?page_size=100")
+    console.log("Fetching common area phones from correct endpoint...")
+    const response = await makeZoomPhoneAPIRequest("/common_areas?page_size=100")
     console.log("Common area phones response:", response)
-    return response.common_area_phones || []
+
+    // The response structure might be different, let's handle various possibilities
+    if (response.common_areas && Array.isArray(response.common_areas)) {
+      return response.common_areas
+    } else if (response.common_area_phones && Array.isArray(response.common_area_phones)) {
+      return response.common_area_phones
+    } else if (Array.isArray(response)) {
+      return response
+    } else {
+      console.warn("Unexpected common areas response structure:", response)
+      return []
+    }
   } catch (error) {
     console.error("Error fetching common area phones:", error)
+    // If the endpoint doesn't exist or fails, return empty array instead of undefined
     return []
   }
 }
@@ -379,7 +394,7 @@ export async function getCommonAreaPhones() {
 export async function getActiveCalls() {
   try {
     const response = await makeZoomPhoneAPIRequest("/calls")
-    return response.calls || []
+    return Array.isArray(response.calls) ? response.calls : []
   } catch (error) {
     console.error("Error fetching active calls:", error)
     return []
