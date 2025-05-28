@@ -9,13 +9,15 @@ export async function GET(request: NextRequest) {
   const errorDescription = searchParams.get("error_description")
 
   // Add detailed logging
+  console.log("=== OAUTH CALLBACK DEBUG ===")
   console.log("Full callback URL:", request.url)
   console.log("All search params:", Object.fromEntries(searchParams.entries()))
   console.log("OAuth callback received:", {
-    code: !!code,
+    hasCode: !!code,
     codeLength: code?.length,
+    codePreview: code?.substring(0, 20) + "...",
+    hasState: !!state,
     state,
-    stateLength: state?.length,
     error,
     errorDescription,
   })
@@ -29,22 +31,25 @@ export async function GET(request: NextRequest) {
 
   if (!code || !state) {
     console.error("Missing required parameters:", {
-      code: !!code,
-      codePresent: !!code,
-      codeValue: code?.substring(0, 10) + "...",
-      state: !!state,
-      statePresent: !!state,
-      stateValue: state,
+      hasCode: !!code,
+      hasState: !!state,
     })
     return NextResponse.redirect(new URL("/auth/error?error=missing_parameters", request.url))
   }
 
   try {
-    await handleZoomCallback(code, state)
-    console.log("OAuth callback successful")
+    console.log("Attempting to exchange code for tokens...")
+    const tokens = await handleZoomCallback(code, state)
+    console.log("OAuth callback successful, tokens received:", {
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
+      expiresAt: new Date(tokens.expires_at).toISOString(),
+    })
+    console.log("=== END CALLBACK DEBUG ===")
     return NextResponse.redirect(new URL("/", request.url))
   } catch (error) {
     console.error("OAuth callback error:", error)
+    console.log("=== END CALLBACK DEBUG ===")
     return NextResponse.redirect(
       new URL(`/auth/error?error=callback_failed&description=${encodeURIComponent(String(error))}`, request.url),
     )

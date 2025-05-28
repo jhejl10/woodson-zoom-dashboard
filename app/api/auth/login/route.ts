@@ -27,15 +27,11 @@ export async function POST() {
     // Generate state for CSRF protection
     const state = Math.random().toString(36).substring(7)
 
-    // Use minimal scopes first to test
-    const scopes = ["user:read", "phone:read"].join(" ")
-
-    // Build the authorization URL
+    // Build the authorization URL - NO SCOPES for basic OAuth app
     const params = new URLSearchParams({
       response_type: "code",
       client_id: process.env.ZOOM_CLIENT_ID,
       redirect_uri: process.env.ZOOM_REDIRECT_URI,
-      scope: scopes,
       state: state,
     })
 

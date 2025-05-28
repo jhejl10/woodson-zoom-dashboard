@@ -23,7 +23,6 @@ export async function initiateZoomAuth() {
     response_type: "code",
     client_id: process.env.ZOOM_CLIENT_ID!,
     redirect_uri: process.env.ZOOM_REDIRECT_URI!,
-    scope: "phone:read phone:write phone:read:admin phone:write:admin user:read user:write",
     state: state,
   })
 
@@ -56,7 +55,9 @@ export async function handleZoomCallback(code: string, state: string) {
     })
 
     if (!response.ok) {
-      throw new Error("Failed to exchange code for tokens")
+      const errorText = await response.text()
+      console.error("Token exchange failed:", response.status, errorText)
+      throw new Error(`Failed to exchange code for tokens: ${response.status}`)
     }
 
     const data = await response.json()
