@@ -141,7 +141,8 @@ export async function makeZoomPhoneAPIRequest(endpoint: string, options: Request
 // User management functions
 export async function getPhoneUsers() {
   try {
-    const response = await makeZoomPhoneAPIRequest("/users")
+    const response = await makeZoomPhoneAPIRequest("/users?page_size=100")
+    console.log("Phone users response:", response)
     return response.users || []
   } catch (error) {
     console.error("Error fetching phone users:", error)
@@ -353,7 +354,8 @@ export async function sendSMS(from: string, to: string, message: string) {
 // Sites and locations
 export async function getSites() {
   try {
-    const response = await makeZoomPhoneAPIRequest("/sites")
+    const response = await makeZoomPhoneAPIRequest("/sites?page_size=100")
+    console.log("Sites response:", response)
     return response.sites || []
   } catch (error) {
     console.error("Error fetching sites:", error)
@@ -364,7 +366,8 @@ export async function getSites() {
 // Common area phones
 export async function getCommonAreaPhones() {
   try {
-    const response = await makeZoomPhoneAPIRequest("/common_area_phones")
+    const response = await makeZoomPhoneAPIRequest("/common_area_phones?page_size=100")
+    console.log("Common area phones response:", response)
     return response.common_area_phones || []
   } catch (error) {
     console.error("Error fetching common area phones:", error)

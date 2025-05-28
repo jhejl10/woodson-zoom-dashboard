@@ -2,10 +2,11 @@
 
 import { Badge } from "@/components/ui/badge"
 import { Wifi, WifiOff, AlertCircle } from "lucide-react"
-import { useWebSocketConnection } from "@/hooks/use-websocket-events"
 
 export function ConnectionStatus() {
-  const { isConnected, connectionError } = useWebSocketConnection()
+  // const { isConnected, connectionError } = useWebSocketConnection()
+  const isConnected = true // Temporarily always show as connected
+  const connectionError = null // No connection errors for now
 
   if (connectionError) {
     return (

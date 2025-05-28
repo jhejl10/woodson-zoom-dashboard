@@ -4,7 +4,8 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Phone, Loader2, Settings } from 'lucide-react'
+import { Phone, Loader2, Settings } from "lucide-react"
+import { isDevMode } from "@/lib/dev-mode"
 
 interface ZoomAuthGuardProps {
   children: React.ReactNode
@@ -17,6 +18,14 @@ export function ZoomAuthGuard({ children }: ZoomAuthGuardProps) {
   const [authType, setAuthType] = useState<string | null>(null)
 
   useEffect(() => {
+    if (isDevMode()) {
+      // Skip auth in development/preview mode
+      setIsAuthenticated(true)
+      setAuthType("mock")
+      setIsLoading(false)
+      return
+    }
+
     checkAuthStatus()
   }, [])
 
@@ -88,9 +97,7 @@ export function ZoomAuthGuard({ children }: ZoomAuthGuardProps) {
               </div>
             </div>
             <CardTitle>Connect to Zoom Phone</CardTitle>
-            <CardDescription>
-              Sign in with your Zoom account to access your phone data and manage calls
-            </CardDescription>
+            <CardDescription>Sign in with your Zoom account to access your phone data and manage calls</CardDescription>
           </CardHeader>
           <CardContent>
             {error && (
@@ -113,12 +120,7 @@ export function ZoomAuthGuard({ children }: ZoomAuthGuardProps) {
               This will redirect you to Zoom's secure authentication page
             </p>
             <div className="mt-4 pt-4 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => (window.location.href = "/debug")}
-                className="w-full"
-              >
+              <Button variant="outline" size="sm" onClick={() => (window.location.href = "/debug")} className="w-full">
                 <Settings className="mr-2 h-4 w-4" />
                 Debug Configuration
               </Button>
