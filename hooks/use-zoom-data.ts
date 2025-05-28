@@ -7,31 +7,77 @@ interface UseZoomDataOptions {
   enabled?: boolean
 }
 
-// Enhanced error boundary for data processing
-function safeProcessArray(data: any, fallback: any[] = []): any[] {
+// Ultra-safe array processing function
+function ultraSafeProcessArray(data: any, fallback: any[] = []): any[] {
   try {
-    // Handle null/undefined
-    if (!data) return fallback
+    console.log("ultraSafeProcessArray input:", data, typeof data)
+
+    // Handle null/undefined/false/0/empty string
+    if (!data) {
+      console.log("Data is falsy, returning fallback")
+      return fallback
+    }
 
     // Handle direct array
     if (Array.isArray(data)) {
-      return data.filter((item) => item != null)
+      console.log("Data is direct array, filtering...")
+      const filtered = data.filter((item) => {
+        if (item === null || item === undefined) {
+          console.log("Filtering out null/undefined item")
+          return false
+        }
+        return true
+      })
+      console.log("Filtered array result:", filtered)
+      return filtered
     }
 
     // Handle nested object with array property
-    if (typeof data === "object") {
-      const keys = ["users", "calls", "queues", "voicemails", "recordings"]
+    if (typeof data === "object" && data !== null) {
+      console.log("Data is object, checking for array properties...")
+      const keys = ["users", "calls", "queues", "voicemails", "recordings", "data", "items", "results"]
+
       for (const key of keys) {
-        if (Array.isArray(data[key])) {
-          return data[key].filter((item) => item != null)
+        if (data.hasOwnProperty(key) && Array.isArray(data[key])) {
+          console.log(`Found array at key: ${key}`)
+          const filtered = data[key].filter((item) => {
+            if (item === null || item === undefined) {
+              console.log("Filtering out null/undefined item from nested array")
+              return false
+            }
+            return true
+          })
+          console.log("Filtered nested array result:", filtered)
+          return filtered
         }
       }
     }
 
+    console.log("No array found, returning fallback")
     return fallback
   } catch (error) {
-    console.error("Error processing array data:", error)
+    console.error("Error in ultraSafeProcessArray:", error)
     return fallback
+  }
+}
+
+// Safe forEach wrapper
+function safeForEach<T>(array: any, callback: (item: T, index: number, array: T[]) => void): void {
+  try {
+    if (!Array.isArray(array)) {
+      console.warn("safeForEach: input is not an array:", array)
+      return
+    }
+
+    array.forEach((item, index, arr) => {
+      try {
+        callback(item, index, arr)
+      } catch (error) {
+        console.error("Error in forEach callback:", error)
+      }
+    })
+  } catch (error) {
+    console.error("Error in safeForEach:", error)
   }
 }
 
@@ -46,6 +92,8 @@ export function useZoomUsers(options: UseZoomDataOptions = {}) {
 
     try {
       setError(null)
+      console.log("Fetching users...")
+
       const response = await fetch("/api/phone/users")
 
       if (!response.ok) {
@@ -53,13 +101,19 @@ export function useZoomUsers(options: UseZoomDataOptions = {}) {
       }
 
       const data = await response.json()
-      console.log("Raw users data:", data)
+      console.log("Raw users API response:", data)
 
-      // Use enhanced array processing
-      const processedUsers = safeProcessArray(data, [])
-      console.log("Processed users:", processedUsers)
+      // Use ultra-safe array processing
+      const processedUsers = ultraSafeProcessArray(data, [])
+      console.log("Final processed users:", processedUsers)
 
-      setUsers(processedUsers)
+      // Ensure we always set an array
+      if (Array.isArray(processedUsers)) {
+        setUsers(processedUsers)
+      } else {
+        console.warn("processedUsers is not an array, setting empty array")
+        setUsers([])
+      }
     } catch (err) {
       console.error("Error fetching users:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
@@ -92,6 +146,8 @@ export function useZoomCalls(type: "history" | "active" = "history", options: Us
 
     try {
       setError(null)
+      console.log("Fetching calls...")
+
       const response = await fetch(`/api/phone/calls?type=${type}`)
 
       if (!response.ok) {
@@ -99,13 +155,19 @@ export function useZoomCalls(type: "history" | "active" = "history", options: Us
       }
 
       const data = await response.json()
-      console.log("Raw calls data:", data)
+      console.log("Raw calls API response:", data)
 
-      // Use enhanced array processing
-      const processedCalls = safeProcessArray(data, [])
-      console.log("Processed calls:", processedCalls)
+      // Use ultra-safe array processing
+      const processedCalls = ultraSafeProcessArray(data, [])
+      console.log("Final processed calls:", processedCalls)
 
-      setCalls(processedCalls)
+      // Ensure we always set an array
+      if (Array.isArray(processedCalls)) {
+        setCalls(processedCalls)
+      } else {
+        console.warn("processedCalls is not an array, setting empty array")
+        setCalls([])
+      }
     } catch (err) {
       console.error("Error fetching calls:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
@@ -138,6 +200,8 @@ export function useZoomQueues(options: UseZoomDataOptions = {}) {
 
     try {
       setError(null)
+      console.log("Fetching queues...")
+
       const response = await fetch("/api/phone/queues")
 
       if (!response.ok) {
@@ -145,13 +209,19 @@ export function useZoomQueues(options: UseZoomDataOptions = {}) {
       }
 
       const data = await response.json()
-      console.log("Raw queues data:", data)
+      console.log("Raw queues API response:", data)
 
-      // Use enhanced array processing
-      const processedQueues = safeProcessArray(data, [])
-      console.log("Processed queues:", processedQueues)
+      // Use ultra-safe array processing
+      const processedQueues = ultraSafeProcessArray(data, [])
+      console.log("Final processed queues:", processedQueues)
 
-      setQueues(processedQueues)
+      // Ensure we always set an array
+      if (Array.isArray(processedQueues)) {
+        setQueues(processedQueues)
+      } else {
+        console.warn("processedQueues is not an array, setting empty array")
+        setQueues([])
+      }
     } catch (err) {
       console.error("Error fetching queues:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
@@ -184,6 +254,8 @@ export function useZoomVoicemails(userId?: string, options: UseZoomDataOptions =
 
     try {
       setError(null)
+      console.log("Fetching voicemails...")
+
       const url = userId ? `/api/phone/voicemails?user_id=${userId}` : "/api/phone/voicemails"
       const response = await fetch(url)
 
@@ -192,13 +264,19 @@ export function useZoomVoicemails(userId?: string, options: UseZoomDataOptions =
       }
 
       const data = await response.json()
-      console.log("Raw voicemails data:", data)
+      console.log("Raw voicemails API response:", data)
 
-      // Use enhanced array processing
-      const processedVoicemails = safeProcessArray(data, [])
-      console.log("Processed voicemails:", processedVoicemails)
+      // Use ultra-safe array processing
+      const processedVoicemails = ultraSafeProcessArray(data, [])
+      console.log("Final processed voicemails:", processedVoicemails)
 
-      setVoicemails(processedVoicemails)
+      // Ensure we always set an array
+      if (Array.isArray(processedVoicemails)) {
+        setVoicemails(processedVoicemails)
+      } else {
+        console.warn("processedVoicemails is not an array, setting empty array")
+        setVoicemails([])
+      }
     } catch (err) {
       console.error("Error fetching voicemails:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
@@ -231,6 +309,8 @@ export function useZoomRecordings(options: UseZoomDataOptions = {}) {
 
     try {
       setError(null)
+      console.log("Fetching recordings...")
+
       const response = await fetch("/api/phone/recordings")
 
       if (!response.ok) {
@@ -238,13 +318,19 @@ export function useZoomRecordings(options: UseZoomDataOptions = {}) {
       }
 
       const data = await response.json()
-      console.log("Raw recordings data:", data)
+      console.log("Raw recordings API response:", data)
 
-      // Use enhanced array processing
-      const processedRecordings = safeProcessArray(data, [])
-      console.log("Processed recordings:", processedRecordings)
+      // Use ultra-safe array processing
+      const processedRecordings = ultraSafeProcessArray(data, [])
+      console.log("Final processed recordings:", processedRecordings)
 
-      setRecordings(processedRecordings)
+      // Ensure we always set an array
+      if (Array.isArray(processedRecordings)) {
+        setRecordings(processedRecordings)
+      } else {
+        console.warn("processedRecordings is not an array, setting empty array")
+        setRecordings([])
+      }
     } catch (err) {
       console.error("Error fetching recordings:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
@@ -265,3 +351,6 @@ export function useZoomRecordings(options: UseZoomDataOptions = {}) {
 
   return { recordings, loading, error, refetch: fetchRecordings }
 }
+
+// Export the safe utilities for use in components
+export { ultraSafeProcessArray, safeForEach }

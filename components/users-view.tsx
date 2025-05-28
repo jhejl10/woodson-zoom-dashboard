@@ -25,7 +25,7 @@ import {
   SortAsc,
 } from "lucide-react"
 import { UserDetailsDialog } from "./user-details-dialog"
-import { useZoomUsers } from "@/hooks/use-zoom-data"
+import { useZoomUsers, ultraSafeProcessArray } from "@/hooks/use-zoom-data"
 
 function getPresenceIcon(presence: string) {
   switch (presence) {
@@ -64,6 +64,7 @@ function getPresenceText(presence: string) {
 function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) => void }) {
   // Safely handle user data
   if (!user || typeof user !== "object") {
+    console.warn("UserCard received invalid user:", user)
     return null
   }
 
@@ -171,64 +172,74 @@ export function UsersView() {
   // Mock current user's site - replace with real data when available
   const currentUserSite = "New York Office"
 
-  // Group users by site with comprehensive error handling
+  // Group users by site with ultra-safe processing
   const groupedUsers = useMemo(() => {
     try {
-      console.log("Processing users for grouping:", users)
+      console.log("=== GROUPING USERS START ===")
+      console.log("Raw users from hook:", users)
 
-      // Ensure users is an array and filter out invalid entries
-      if (!Array.isArray(users)) {
-        console.warn("Users is not an array:", users)
-        return []
+      // Ensure users is always an array using our ultra-safe function
+      const safeUsers = ultraSafeProcessArray(users, [])
+      console.log("Safe users after processing:", safeUsers)
+
+      // Validate each user object
+      const validUsers: any[] = []
+
+      // Use traditional for loop instead of forEach to avoid the error
+      for (let i = 0; i < safeUsers.length; i++) {
+        const user = safeUsers[i]
+        if (user && typeof user === "object" && user.id) {
+          validUsers.push(user)
+        } else {
+          console.warn("Invalid user object at index", i, ":", user)
+        }
       }
 
-      const validUsers = users.filter((user) => {
-        if (!user || typeof user !== "object") {
-          console.warn("Invalid user object:", user)
-          return false
-        }
-        return true
-      })
-
-      console.log("Valid users after filtering:", validUsers)
+      console.log("Valid users after validation:", validUsers)
 
       // Filter by search term
-      const filtered = validUsers.filter((user: any) => {
+      const filtered: any[] = []
+      for (let i = 0; i < validUsers.length; i++) {
+        const user = validUsers[i]
         try {
           const searchLower = searchTerm.toLowerCase()
-          return (
+          const matchesSearch =
             (user.name && user.name.toLowerCase().includes(searchLower)) ||
             (user.email && user.email.toLowerCase().includes(searchLower)) ||
             (user.extension && user.extension.toString().includes(searchTerm)) ||
             (user.phone_number && user.phone_number.includes(searchTerm))
-          )
+
+          if (matchesSearch) {
+            filtered.push(user)
+          }
         } catch (err) {
           console.warn("Error filtering user:", user, err)
-          return false
         }
-      })
+      }
 
       console.log("Filtered users:", filtered)
 
-      // Group by site with null checks
-      const grouped = filtered.reduce((acc: any, user: any) => {
+      // Group by site
+      const grouped: { [key: string]: any[] } = {}
+      for (let i = 0; i < filtered.length; i++) {
+        const user = filtered[i]
         try {
           const site = user.site || "Unknown Site"
-          if (!acc[site]) {
-            acc[site] = []
+          if (!grouped[site]) {
+            grouped[site] = []
           }
-          acc[site].push(user)
-          return acc
+          grouped[site].push(user)
         } catch (err) {
           console.warn("Error grouping user:", user, err)
-          return acc
         }
-      }, {})
+      }
 
       console.log("Grouped users:", grouped)
 
       // Sort users within each site
-      Object.keys(grouped).forEach((site) => {
+      const siteKeys = Object.keys(grouped)
+      for (let i = 0; i < siteKeys.length; i++) {
+        const site = siteKeys[i]
         try {
           if (Array.isArray(grouped[site])) {
             grouped[site].sort((a: any, b: any) => {
@@ -253,7 +264,7 @@ export function UsersView() {
         } catch (err) {
           console.warn("Error sorting site users:", site, err)
         }
-      })
+      }
 
       // Sort sites: current user's site first, then alphabetical
       const sortedSites = Object.keys(grouped).sort((a, b) => {
@@ -262,12 +273,17 @@ export function UsersView() {
         return a.localeCompare(b)
       })
 
-      const result = sortedSites.map((site) => ({
-        site,
-        users: Array.isArray(grouped[site]) ? grouped[site] : [],
-      }))
+      const result: { site: string; users: any[] }[] = []
+      for (let i = 0; i < sortedSites.length; i++) {
+        const site = sortedSites[i]
+        result.push({
+          site,
+          users: Array.isArray(grouped[site]) ? grouped[site] : [],
+        })
+      }
 
       console.log("Final grouped result:", result)
+      console.log("=== GROUPING USERS END ===")
       return result
     } catch (error) {
       console.error("Error grouping users:", error)
