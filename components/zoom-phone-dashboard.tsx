@@ -30,7 +30,7 @@ import { MyProfileView } from "./my-profile-view"
 import { PhonebookView } from "./phonebook-view"
 import { CallRecordingsView } from "./call-recordings-view"
 import { ThemeToggle } from "./theme-toggle"
-import { ErrorBoundary } from "./error-boundary"
+import { SafeErrorBoundary, useErrorHandlers } from "./safe-error-boundary"
 
 import { RealTimeNotifications } from "./real-time-notifications"
 import { ConnectionStatus } from "./connection-status"
@@ -140,39 +140,39 @@ function renderActiveView(activeTab: string) {
     switch (activeTab) {
       case "users":
         return (
-          <ErrorBoundary>
+          <SafeErrorBoundary>
             <UsersView />
-          </ErrorBoundary>
+          </SafeErrorBoundary>
         )
       case "queues":
         return (
-          <ErrorBoundary>
+          <SafeErrorBoundary>
             <CallQueuesView />
-          </ErrorBoundary>
+          </SafeErrorBoundary>
         )
       case "recordings":
         return (
-          <ErrorBoundary>
+          <SafeErrorBoundary>
             <CallRecordingsView />
-          </ErrorBoundary>
+          </SafeErrorBoundary>
         )
       case "my-site":
         return (
-          <ErrorBoundary>
+          <SafeErrorBoundary>
             <MySiteView />
-          </ErrorBoundary>
+          </SafeErrorBoundary>
         )
       case "my-profile":
         return (
-          <ErrorBoundary>
+          <SafeErrorBoundary>
             <MyProfileView />
-          </ErrorBoundary>
+          </SafeErrorBoundary>
         )
       case "phonebook":
         return (
-          <ErrorBoundary>
+          <SafeErrorBoundary>
             <PhonebookView />
-          </ErrorBoundary>
+          </SafeErrorBoundary>
         )
       case "my-view":
         return (
@@ -188,9 +188,9 @@ function renderActiveView(activeTab: string) {
         )
       default:
         return (
-          <ErrorBoundary>
+          <SafeErrorBoundary>
             <UsersView />
-          </ErrorBoundary>
+          </SafeErrorBoundary>
         )
     }
   } catch (error) {
@@ -209,6 +209,9 @@ export function ZoomPhoneDashboard() {
   const [activeTab, setActiveTab] = useState("users")
   const [phoneAccess, setPhoneAccess] = useState<{ hasAccess: boolean; error: string | null } | null>(null)
 
+  // Initialize error handlers
+  useErrorHandlers()
+
   useEffect(() => {
     const checkAccess = async () => {
       try {
@@ -226,7 +229,7 @@ export function ZoomPhoneDashboard() {
   // Show phone access warning if needed
   if (phoneAccess && !phoneAccess.hasAccess) {
     return (
-      <ErrorBoundary>
+      <SafeErrorBoundary>
         <SidebarProvider>
           <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
           <SidebarInset>
@@ -271,12 +274,12 @@ export function ZoomPhoneDashboard() {
             </div>
           </SidebarInset>
         </SidebarProvider>
-      </ErrorBoundary>
+      </SafeErrorBoundary>
     )
   }
 
   return (
-    <ErrorBoundary>
+    <SafeErrorBoundary>
       <SidebarProvider>
         <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <SidebarInset>
@@ -308,6 +311,6 @@ export function ZoomPhoneDashboard() {
         <RealTimeNotifications />
         <Toaster position="top-right" />
       </SidebarProvider>
-    </ErrorBoundary>
+    </SafeErrorBoundary>
   )
 }

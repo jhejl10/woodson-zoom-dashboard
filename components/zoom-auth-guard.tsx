@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Phone, Loader2, Settings } from "lucide-react"
+import { SafeErrorBoundary, useErrorHandlers } from "./safe-error-boundary"
 
 interface ZoomAuthGuardProps {
   children: React.ReactNode
@@ -15,6 +16,9 @@ export function ZoomAuthGuard({ children }: ZoomAuthGuardProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [authType, setAuthType] = useState<string | null>(null)
+
+  // Initialize error handlers
+  useErrorHandlers()
 
   useEffect(() => {
     checkAuthStatus()
@@ -122,5 +126,5 @@ export function ZoomAuthGuard({ children }: ZoomAuthGuardProps) {
     )
   }
 
-  return <>{children}</>
+  return <SafeErrorBoundary>{children}</SafeErrorBoundary>
 }
