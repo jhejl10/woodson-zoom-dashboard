@@ -17,34 +17,78 @@ export function MyProfileView() {
   const { calls: callHistory, loading: callsLoading, error: callsError } = useZoomCalls("history")
   const { voicemails, loading: voicemailsLoading, error: voicemailsError } = useZoomVoicemails()
 
-  // Triple-check that data is always an array
+  // Enhanced array processing with multiple safety checks
   let safeCallHistory: any[] = []
   let safeVoicemails: any[] = []
 
   try {
+    console.log("Raw call history data in MyProfileView:", callHistory)
+
     if (Array.isArray(callHistory)) {
-      safeCallHistory = callHistory.filter((call) => call != null)
-    } else if (callHistory && typeof callHistory === "object" && Array.isArray(callHistory.calls)) {
-      safeCallHistory = callHistory.calls.filter((call) => call != null)
+      safeCallHistory = callHistory.filter((call) => {
+        if (!call || typeof call !== "object") {
+          console.warn("Invalid call object:", call)
+          return false
+        }
+        return true
+      })
+    } else if (callHistory && typeof callHistory === "object") {
+      const possibleArrays = ["calls", "data", "items", "call_logs"]
+      for (const key of possibleArrays) {
+        if (Array.isArray(callHistory[key])) {
+          safeCallHistory = callHistory[key].filter((call) => {
+            if (!call || typeof call !== "object") {
+              console.warn("Invalid call object:", call)
+              return false
+            }
+            return true
+          })
+          break
+        }
+      }
     }
+
+    console.log("Processed safe call history:", safeCallHistory)
   } catch (err) {
     console.error("Error processing call history:", err)
     safeCallHistory = []
   }
 
   try {
+    console.log("Raw voicemails data in MyProfileView:", voicemails)
+
     if (Array.isArray(voicemails)) {
-      safeVoicemails = voicemails.filter((vm) => vm != null)
-    } else if (voicemails && typeof voicemails === "object" && Array.isArray(voicemails.voicemails)) {
-      safeVoicemails = voicemails.voicemails.filter((vm) => vm != null)
+      safeVoicemails = voicemails.filter((vm) => {
+        if (!vm || typeof vm !== "object") {
+          console.warn("Invalid voicemail object:", vm)
+          return false
+        }
+        return true
+      })
+    } else if (voicemails && typeof voicemails === "object") {
+      const possibleArrays = ["voicemails", "data", "items"]
+      for (const key of possibleArrays) {
+        if (Array.isArray(voicemails[key])) {
+          safeVoicemails = voicemails[key].filter((vm) => {
+            if (!vm || typeof vm !== "object") {
+              console.warn("Invalid voicemail object:", vm)
+              return false
+            }
+            return true
+          })
+          break
+        }
+      }
     }
+
+    console.log("Processed safe voicemails:", safeVoicemails)
   } catch (err) {
     console.error("Error processing voicemails:", err)
     safeVoicemails = []
   }
 
   const getCallIcon = (call: any) => {
-    if (!call) return PhoneIncoming
+    if (!call || typeof call !== "object") return PhoneIncoming
 
     if (call.direction === "inbound") {
       return call.result === "missed" ? PhoneIncoming : PhoneIncoming
@@ -53,7 +97,7 @@ export function MyProfileView() {
   }
 
   const getCallColor = (call: any) => {
-    if (!call) return "text-gray-500"
+    if (!call || typeof call !== "object") return "text-gray-500"
 
     if (call.result === "missed") return "text-red-500"
     if (call.direction === "inbound") return "text-green-500"
@@ -134,11 +178,11 @@ export function MyProfileView() {
                   </TableHeader>
                   <TableBody>
                     {safeCallHistory.map((call: any, index: number) => {
-                      if (!call) return null
+                      if (!call || typeof call !== "object") return null
 
                       const CallIcon = getCallIcon(call)
                       return (
-                        <TableRow key={call.id || index}>
+                        <TableRow key={call.id || `call-${index}`}>
                           <TableCell className="flex items-center space-x-3">
                             <div className={`p-2 rounded-full bg-muted ${getCallColor(call)}`}>
                               <CallIcon className="h-4 w-4" />
@@ -197,10 +241,13 @@ export function MyProfileView() {
               ) : safeVoicemails.length > 0 ? (
                 <div className="space-y-4">
                   {safeVoicemails.map((voicemail: any, index: number) => {
-                    if (!voicemail) return null
+                    if (!voicemail || typeof voicemail !== "object") return null
 
                     return (
-                      <div key={voicemail.id || index} className="flex items-start space-x-4 p-4 border rounded-lg">
+                      <div
+                        key={voicemail.id || `voicemail-${index}`}
+                        className="flex items-start space-x-4 p-4 border rounded-lg"
+                      >
                         <div className="p-2 rounded-full bg-blue-100 text-blue-600">
                           <Voicemail className="h-4 w-4" />
                         </div>

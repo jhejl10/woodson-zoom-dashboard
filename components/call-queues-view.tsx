@@ -16,14 +16,37 @@ export function CallQueuesView() {
   // Use real Zoom data with enhanced error handling
   const { queues, loading, error, refetch } = useZoomQueues()
 
-  // Triple-check that queues is always an array
+  // Enhanced array processing with multiple safety checks
   let safeQueues: any[] = []
   try {
+    console.log("Raw queues data in CallQueuesView:", queues)
+
     if (Array.isArray(queues)) {
-      safeQueues = queues.filter((queue) => queue != null)
-    } else if (queues && typeof queues === "object" && Array.isArray(queues.queues)) {
-      safeQueues = queues.queues.filter((queue) => queue != null)
+      safeQueues = queues.filter((queue) => {
+        if (!queue || typeof queue !== "object") {
+          console.warn("Invalid queue object:", queue)
+          return false
+        }
+        return true
+      })
+    } else if (queues && typeof queues === "object") {
+      // Check for nested arrays
+      const possibleArrays = ["queues", "data", "items"]
+      for (const key of possibleArrays) {
+        if (Array.isArray(queues[key])) {
+          safeQueues = queues[key].filter((queue) => {
+            if (!queue || typeof queue !== "object") {
+              console.warn("Invalid queue object:", queue)
+              return false
+            }
+            return true
+          })
+          break
+        }
+      }
     }
+
+    console.log("Processed safe queues:", safeQueues)
   } catch (err) {
     console.error("Error processing queues:", err)
     safeQueues = []
@@ -32,7 +55,7 @@ export function CallQueuesView() {
   let filteredQueues: any[] = []
   try {
     filteredQueues = safeQueues.filter((queue: any) => {
-      if (!queue) return false
+      if (!queue || typeof queue !== "object") return false
 
       const name = queue.name || ""
       const extension = queue.extension || ""
@@ -112,10 +135,10 @@ export function CallQueuesView() {
               </TableHeader>
               <TableBody>
                 {filteredQueues.map((queue: any, index: number) => {
-                  if (!queue) return null
+                  if (!queue || typeof queue !== "object") return null
 
                   return (
-                    <TableRow key={queue.id || index} className="cursor-pointer hover:bg-muted/50">
+                    <TableRow key={queue.id || `queue-${index}`} className="cursor-pointer hover:bg-muted/50">
                       <TableCell className="flex items-center space-x-3">
                         <div className="p-2 rounded bg-blue-100 text-blue-600">
                           <Phone className="h-4 w-4" />
