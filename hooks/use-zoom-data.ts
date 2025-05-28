@@ -7,6 +7,34 @@ interface UseZoomDataOptions {
   enabled?: boolean
 }
 
+// Enhanced error boundary for data processing
+function safeProcessArray(data: any, fallback: any[] = []): any[] {
+  try {
+    // Handle null/undefined
+    if (!data) return fallback
+
+    // Handle direct array
+    if (Array.isArray(data)) {
+      return data.filter((item) => item != null)
+    }
+
+    // Handle nested object with array property
+    if (typeof data === "object") {
+      const keys = ["users", "calls", "queues", "voicemails", "recordings"]
+      for (const key of keys) {
+        if (Array.isArray(data[key])) {
+          return data[key].filter((item) => item != null)
+        }
+      }
+    }
+
+    return fallback
+  } catch (error) {
+    console.error("Error processing array data:", error)
+    return fallback
+  }
+}
+
 export function useZoomUsers(options: UseZoomDataOptions = {}) {
   const { refreshInterval = 30000, enabled = true } = options
   const [users, setUsers] = useState<any[]>([])
@@ -17,19 +45,25 @@ export function useZoomUsers(options: UseZoomDataOptions = {}) {
     if (!enabled) return
 
     try {
+      setError(null)
       const response = await fetch("/api/phone/users")
-      if (!response.ok) throw new Error("Failed to fetch users")
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
 
       const data = await response.json()
+      console.log("Raw users data:", data)
 
-      // Ensure we always set an array
-      const usersData = data?.users || data || []
-      setUsers(Array.isArray(usersData) ? usersData : [])
-      setError(null)
+      // Use enhanced array processing
+      const processedUsers = safeProcessArray(data, [])
+      console.log("Processed users:", processedUsers)
+
+      setUsers(processedUsers)
     } catch (err) {
       console.error("Error fetching users:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
-      setUsers([]) // Always set empty array on error
+      setUsers([]) // Always ensure array
     } finally {
       setLoading(false)
     }
@@ -57,19 +91,25 @@ export function useZoomCalls(type: "history" | "active" = "history", options: Us
     if (!enabled) return
 
     try {
+      setError(null)
       const response = await fetch(`/api/phone/calls?type=${type}`)
-      if (!response.ok) throw new Error("Failed to fetch calls")
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
 
       const data = await response.json()
+      console.log("Raw calls data:", data)
 
-      // Ensure we always set an array
-      const callsData = data?.calls || data || []
-      setCalls(Array.isArray(callsData) ? callsData : [])
-      setError(null)
+      // Use enhanced array processing
+      const processedCalls = safeProcessArray(data, [])
+      console.log("Processed calls:", processedCalls)
+
+      setCalls(processedCalls)
     } catch (err) {
       console.error("Error fetching calls:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
-      setCalls([]) // Always set empty array on error
+      setCalls([]) // Always ensure array
     } finally {
       setLoading(false)
     }
@@ -97,19 +137,25 @@ export function useZoomQueues(options: UseZoomDataOptions = {}) {
     if (!enabled) return
 
     try {
+      setError(null)
       const response = await fetch("/api/phone/queues")
-      if (!response.ok) throw new Error("Failed to fetch queues")
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
 
       const data = await response.json()
+      console.log("Raw queues data:", data)
 
-      // Ensure we always set an array
-      const queuesData = data?.queues || data || []
-      setQueues(Array.isArray(queuesData) ? queuesData : [])
-      setError(null)
+      // Use enhanced array processing
+      const processedQueues = safeProcessArray(data, [])
+      console.log("Processed queues:", processedQueues)
+
+      setQueues(processedQueues)
     } catch (err) {
       console.error("Error fetching queues:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
-      setQueues([]) // Always set empty array on error
+      setQueues([]) // Always ensure array
     } finally {
       setLoading(false)
     }
@@ -137,20 +183,26 @@ export function useZoomVoicemails(userId?: string, options: UseZoomDataOptions =
     if (!enabled) return
 
     try {
+      setError(null)
       const url = userId ? `/api/phone/voicemails?user_id=${userId}` : "/api/phone/voicemails"
       const response = await fetch(url)
-      if (!response.ok) throw new Error("Failed to fetch voicemails")
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
 
       const data = await response.json()
+      console.log("Raw voicemails data:", data)
 
-      // Ensure we always set an array
-      const voicemailsData = data?.voicemails || data || []
-      setVoicemails(Array.isArray(voicemailsData) ? voicemailsData : [])
-      setError(null)
+      // Use enhanced array processing
+      const processedVoicemails = safeProcessArray(data, [])
+      console.log("Processed voicemails:", processedVoicemails)
+
+      setVoicemails(processedVoicemails)
     } catch (err) {
       console.error("Error fetching voicemails:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
-      setVoicemails([]) // Always set empty array on error
+      setVoicemails([]) // Always ensure array
     } finally {
       setLoading(false)
     }
@@ -178,19 +230,25 @@ export function useZoomRecordings(options: UseZoomDataOptions = {}) {
     if (!enabled) return
 
     try {
+      setError(null)
       const response = await fetch("/api/phone/recordings")
-      if (!response.ok) throw new Error("Failed to fetch recordings")
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
 
       const data = await response.json()
+      console.log("Raw recordings data:", data)
 
-      // Ensure we always set an array
-      const recordingsData = data?.recordings || data || []
-      setRecordings(Array.isArray(recordingsData) ? recordingsData : [])
-      setError(null)
+      // Use enhanced array processing
+      const processedRecordings = safeProcessArray(data, [])
+      console.log("Processed recordings:", processedRecordings)
+
+      setRecordings(processedRecordings)
     } catch (err) {
       console.error("Error fetching recordings:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
-      setRecordings([]) // Always set empty array on error
+      setRecordings([]) // Always ensure array
     } finally {
       setLoading(false)
     }

@@ -62,6 +62,11 @@ function getPresenceText(presence: string) {
 }
 
 function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) => void }) {
+  // Safely handle user data
+  if (!user || typeof user !== "object") {
+    return null
+  }
+
   // Mock active call data - replace with real data when available
   const isOnCall = Math.random() > 0.8 // 20% chance of being on a call
   const callContact = isOnCall ? "+1 (555) 123-4567" : null
@@ -77,11 +82,11 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
                 {user?.type === "common_area" ? (
                   <Building className="h-4 w-4" />
                 ) : (
-                  user?.name
-                    ?.split(" ")
+                  (user?.name || "?")
+                    .split(" ")
                     .map((n: string) => n[0])
                     .join("")
-                    .slice(0, 2) || "?"
+                    .slice(0, 2)
                 )}
               </AvatarFallback>
             </Avatar>
@@ -160,62 +165,93 @@ export function UsersView() {
   const [showUserDialog, setShowUserDialog] = useState(false)
   const [sortBy, setSortBy] = useState<"extension" | "name">("extension")
 
-  // Use real Zoom data
+  // Use real Zoom data with enhanced error handling
   const { users, loading, error, refetch } = useZoomUsers()
-
-  // Ensure users is always an array with proper null checks
-  const safeUsers = Array.isArray(users) ? users : []
 
   // Mock current user's site - replace with real data when available
   const currentUserSite = "New York Office"
 
-  // Group users by site and sort with comprehensive error handling
+  // Group users by site with comprehensive error handling
   const groupedUsers = useMemo(() => {
     try {
-      if (!Array.isArray(safeUsers) || safeUsers.length === 0) {
+      console.log("Processing users for grouping:", users)
+
+      // Ensure users is an array and filter out invalid entries
+      if (!Array.isArray(users)) {
+        console.warn("Users is not an array:", users)
         return []
       }
 
-      const filtered = safeUsers.filter((user: any) => {
-        if (!user) return false
-
-        const searchLower = searchTerm.toLowerCase()
-        return (
-          (user.name && user.name.toLowerCase().includes(searchLower)) ||
-          (user.email && user.email.toLowerCase().includes(searchLower)) ||
-          (user.extension && user.extension.toString().includes(searchTerm)) ||
-          (user.phone_number && user.phone_number.includes(searchTerm))
-        )
+      const validUsers = users.filter((user) => {
+        if (!user || typeof user !== "object") {
+          console.warn("Invalid user object:", user)
+          return false
+        }
+        return true
       })
+
+      console.log("Valid users after filtering:", validUsers)
+
+      // Filter by search term
+      const filtered = validUsers.filter((user: any) => {
+        try {
+          const searchLower = searchTerm.toLowerCase()
+          return (
+            (user.name && user.name.toLowerCase().includes(searchLower)) ||
+            (user.email && user.email.toLowerCase().includes(searchLower)) ||
+            (user.extension && user.extension.toString().includes(searchTerm)) ||
+            (user.phone_number && user.phone_number.includes(searchTerm))
+          )
+        } catch (err) {
+          console.warn("Error filtering user:", user, err)
+          return false
+        }
+      })
+
+      console.log("Filtered users:", filtered)
 
       // Group by site with null checks
       const grouped = filtered.reduce((acc: any, user: any) => {
-        if (!user) return acc
-
-        const site = user.site || "Unknown Site"
-        if (!acc[site]) {
-          acc[site] = []
+        try {
+          const site = user.site || "Unknown Site"
+          if (!acc[site]) {
+            acc[site] = []
+          }
+          acc[site].push(user)
+          return acc
+        } catch (err) {
+          console.warn("Error grouping user:", user, err)
+          return acc
         }
-        acc[site].push(user)
-        return acc
       }, {})
 
-      // Sort users within each site with null checks
-      Object.keys(grouped).forEach((site) => {
-        if (Array.isArray(grouped[site])) {
-          grouped[site].sort((a: any, b: any) => {
-            if (!a || !b) return 0
+      console.log("Grouped users:", grouped)
 
-            if (sortBy === "extension") {
-              const extA = Number.parseInt(a.extension) || 0
-              const extB = Number.parseInt(b.extension) || 0
-              return extA - extB
-            } else {
-              const nameA = a.name || ""
-              const nameB = b.name || ""
-              return nameA.localeCompare(nameB)
-            }
-          })
+      // Sort users within each site
+      Object.keys(grouped).forEach((site) => {
+        try {
+          if (Array.isArray(grouped[site])) {
+            grouped[site].sort((a: any, b: any) => {
+              try {
+                if (!a || !b) return 0
+
+                if (sortBy === "extension") {
+                  const extA = Number.parseInt(a.extension) || 0
+                  const extB = Number.parseInt(b.extension) || 0
+                  return extA - extB
+                } else {
+                  const nameA = a.name || ""
+                  const nameB = b.name || ""
+                  return nameA.localeCompare(nameB)
+                }
+              } catch (err) {
+                console.warn("Error sorting users:", err)
+                return 0
+              }
+            })
+          }
+        } catch (err) {
+          console.warn("Error sorting site users:", site, err)
         }
       })
 
@@ -226,24 +262,27 @@ export function UsersView() {
         return a.localeCompare(b)
       })
 
-      return sortedSites.map((site) => ({
+      const result = sortedSites.map((site) => ({
         site,
         users: Array.isArray(grouped[site]) ? grouped[site] : [],
       }))
+
+      console.log("Final grouped result:", result)
+      return result
     } catch (error) {
       console.error("Error grouping users:", error)
       return []
     }
-  }, [safeUsers, searchTerm, sortBy, currentUserSite])
+  }, [users, searchTerm, sortBy, currentUserSite])
 
-  // Calculate stats with null checks
-  const totalUsers = safeUsers.length
-  const regularUsers = safeUsers.filter((u: any) => u && u.type === "user").length
-  const commonAreaPhones = safeUsers.filter((u: any) => u && u.type === "common_area").length
-  const availableUsers = safeUsers.filter((u: any) => u && u.presence === "available").length
+  // Calculate stats with enhanced null checks
+  const totalUsers = Array.isArray(users) ? users.length : 0
+  const regularUsers = Array.isArray(users) ? users.filter((u: any) => u && u.type === "user").length : 0
+  const commonAreaPhones = Array.isArray(users) ? users.filter((u: any) => u && u.type === "common_area").length : 0
+  const availableUsers = Array.isArray(users) ? users.filter((u: any) => u && u.presence === "available").length : 0
 
   const handleUserClick = (user: any) => {
-    if (user) {
+    if (user && typeof user === "object") {
       setSelectedUser(user)
       setShowUserDialog(true)
     }
@@ -409,8 +448,8 @@ export function UsersView() {
                 <CardContent>
                   {Array.isArray(siteUsers) && siteUsers.length > 0 ? (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {siteUsers.map((user: any) => (
-                        <UserCard key={user?.id || Math.random()} user={user} onUserClick={handleUserClick} />
+                      {siteUsers.map((user: any, index: number) => (
+                        <UserCard key={user?.id || `user-${index}`} user={user} onUserClick={handleUserClick} />
                       ))}
                     </div>
                   ) : (
@@ -425,7 +464,7 @@ export function UsersView() {
                 <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No Users Found</h3>
                 <p className="text-muted-foreground">
-                  {safeUsers.length === 0
+                  {totalUsers === 0
                     ? "No users are available in your organization."
                     : "No users match your search criteria."}
                 </p>
