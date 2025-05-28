@@ -1,10 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,17 +11,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Circle, CircleDot, Clock, Minus, Settings, User, Edit, Loader2 } from "lucide-react"
+import { Circle, CircleDot, Clock, Minus, Settings, User, Loader2 } from "lucide-react"
 import { useCurrentUser } from "@/hooks/use-current-user"
 
 const presenceOptions = [
@@ -34,32 +26,51 @@ const presenceOptions = [
 
 export function ProfileDropdown() {
   const { user, loading, updatePresence } = useCurrentUser()
-  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
-  const [tempPresence, setTempPresence] = useState("")
-  const [tempStatusMessage, setTempStatusMessage] = useState("")
   const [isUpdating, setIsUpdating] = useState(false)
+  const [statusMessage, setStatusMessage] = useState("")
+  const [isEditingMessage, setIsEditingMessage] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
 
-  // Set temp values when dialog opens
-  const handleDialogOpen = (open: boolean) => {
-    if (open && user) {
-      setTempPresence(user.presence.status)
-      setTempStatusMessage(user.presence.status_message)
+  // Initialize status message from user data
+  useEffect(() => {
+    if (user?.presence?.status_message) {
+      setStatusMessage(user.presence.status_message)
     }
-    setIsStatusDialogOpen(open)
+  }, [user])
+
+  const handleStatusChange = async (status: string) => {
+    if (!user || status === user.presence.status) return
+
+    try {
+      setIsUpdating(true)
+      await updatePresence(status, statusMessage)
+    } catch (error) {
+      console.error("Failed to update status:", error)
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
-  const handleUpdateStatus = async () => {
+  const handleStatusMessageSave = async () => {
     if (!user) return
 
     try {
       setIsUpdating(true)
-      await updatePresence(tempPresence, tempStatusMessage)
-      setIsStatusDialogOpen(false)
+      await updatePresence(user.presence.status, statusMessage)
+      setIsEditingMessage(false)
     } catch (error) {
-      console.error("Failed to update status:", error)
-      // You could add a toast notification here
+      console.error("Failed to update status message:", error)
     } finally {
       setIsUpdating(false)
+    }
+  }
+
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" })
+      window.location.href = "/"
+    } catch (error) {
+      console.error("Error signing out:", error)
     }
   }
 
@@ -95,7 +106,7 @@ export function ProfileDropdown() {
     : user.email.slice(0, 2).toUpperCase()
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
@@ -135,91 +146,71 @@ export function ProfileDropdown() {
             </div>
 
             {/* Status Section */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <PresenceIcon className={`h-3 w-3 ${currentPresence.color}`} />
-                  <span className="text-sm">{currentPresence.label}</span>
+            <div className="space-y-2 pt-2">
+              <div className="text-xs font-medium text-muted-foreground">Status</div>
+              <DropdownMenuRadioGroup value={user.presence.status} onValueChange={handleStatusChange}>
+                {presenceOptions.map((option) => {
+                  const Icon = option.icon
+                  return (
+                    <DropdownMenuRadioItem
+                      key={option.value}
+                      value={option.value}
+                      className="flex items-center gap-2 cursor-pointer"
+                      disabled={isUpdating}
+                    >
+                      <Icon className={`h-3 w-3 ${option.color}`} />
+                      <span>{option.label}</span>
+                      {isUpdating && user.presence.status === option.value && (
+                        <Loader2 className="ml-auto h-3 w-3 animate-spin" />
+                      )}
+                    </DropdownMenuRadioItem>
+                  )
+                })}
+              </DropdownMenuRadioGroup>
+            </div>
+
+            {/* Status Message */}
+            <div className="space-y-2 pt-2">
+              <div className="text-xs font-medium text-muted-foreground">Status Message</div>
+              {isEditingMessage ? (
+                <div className="flex gap-2">
+                  <Input
+                    value={statusMessage}
+                    onChange={(e) => setStatusMessage(e.target.value)}
+                    placeholder="What's your status?"
+                    className="h-8 text-sm"
+                    disabled={isUpdating}
+                  />
+                  <Button size="sm" className="h-8 px-2" onClick={handleStatusMessageSave} disabled={isUpdating}>
+                    {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                  </Button>
                 </div>
-                <Dialog open={isStatusDialogOpen} onOpenChange={handleDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-6 px-2">
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>Update Status</DialogTitle>
-                      <DialogDescription>Change your presence status and message</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="presence">Presence Status</Label>
-                        <Select value={tempPresence} onValueChange={setTempPresence}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {presenceOptions.map((option) => {
-                              const Icon = option.icon
-                              return (
-                                <SelectItem key={option.value} value={option.value}>
-                                  <div className="flex items-center space-x-2">
-                                    <Icon className={`h-3 w-3 ${option.color}`} />
-                                    <span>{option.label}</span>
-                                  </div>
-                                </SelectItem>
-                              )
-                            })}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="status-message">Status Message</Label>
-                        <Textarea
-                          id="status-message"
-                          placeholder="What's your status?"
-                          value={tempStatusMessage}
-                          onChange={(e) => setTempStatusMessage(e.target.value)}
-                          className="resize-none"
-                          rows={3}
-                        />
-                      </div>
-                      <Button onClick={handleUpdateStatus} className="w-full" disabled={isUpdating}>
-                        {isUpdating ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Updating...
-                          </>
-                        ) : (
-                          "Update Status"
-                        )}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-              {user.presence.status_message && (
-                <p className="text-xs text-muted-foreground">{user.presence.status_message}</p>
+              ) : (
+                <div
+                  className="text-sm p-2 border rounded-md cursor-pointer hover:bg-muted"
+                  onClick={() => setIsEditingMessage(true)}
+                >
+                  {statusMessage || "Set a status message..."}
+                </div>
               )}
             </div>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setDropdownOpen(false)}>
           <User className="mr-2 h-4 w-4" />
           <span>My Profile</span>
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setDropdownOpen(false)}>
           <Settings className="mr-2 h-4 w-4" />
           <span>Zoom Phone Settings</span>
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setDropdownOpen(false)}>
           <Settings className="mr-2 h-4 w-4" />
           <span>Zoom Profile Settings</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>Sign out</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleSignOut}>Sign out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

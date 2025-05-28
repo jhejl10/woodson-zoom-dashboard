@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Phone, PhoneIncoming, PhoneOff, Users } from "lucide-react"
 import { useCallEvents, usePresenceEvents, useQueueEvents } from "@/hooks/use-websocket-events"
 import type { CallEvent, PresenceEvent, QueueEvent } from "@/lib/websocket-client"
+import { CallNotification } from "./call-notification"
 
 interface RealTimeNotificationsProps {
   enabled?: boolean
@@ -14,6 +15,7 @@ interface RealTimeNotificationsProps {
 export function RealTimeNotifications({ enabled = false, dataLoaded = false }: RealTimeNotificationsProps) {
   // Only enable WebSocket events if both enabled and data is loaded
   const shouldEnable = enabled && dataLoaded
+  const [activeIncomingCall, setActiveIncomingCall] = useState<CallEvent | null>(null)
 
   const { recentCallEvents } = useCallEvents(shouldEnable)
   const { presenceUpdates } = usePresenceEvents(shouldEnable)
@@ -86,13 +88,18 @@ export function RealTimeNotifications({ enabled = false, dataLoaded = false }: R
       switch (event.status) {
         case "ringing":
           if (event.direction === "inbound") {
+            // Show incoming call notification
+            setActiveIncomingCall(event)
+
+            // Also show toast for awareness
             toast("Incoming Call", {
               description: `Call from ${event.caller || "Unknown"}`,
               icon: <PhoneIncoming className="h-4 w-4" />,
               action: {
                 label: "Answer",
                 onClick: () => {
-                  console.log("Answer call:", event.call_id)
+                  console.log("Answer call from toast:", event.call_id)
+                  // This would typically just focus the call notification
                 },
               },
               duration: 10000,
@@ -100,6 +107,11 @@ export function RealTimeNotifications({ enabled = false, dataLoaded = false }: R
           }
           break
         case "answered":
+          // Clear incoming call notification if this was the active call
+          if (activeIncomingCall?.call_id === event.call_id) {
+            setActiveIncomingCall(null)
+          }
+
           toast.success("Call Connected", {
             description: `Connected with ${event.direction === "inbound" ? event.caller : event.callee}`,
             icon: <Phone className="h-4 w-4" />,
@@ -107,6 +119,11 @@ export function RealTimeNotifications({ enabled = false, dataLoaded = false }: R
           })
           break
         case "ended":
+          // Clear incoming call notification if this was the active call
+          if (activeIncomingCall?.call_id === event.call_id) {
+            setActiveIncomingCall(null)
+          }
+
           toast.info("Call Ended", {
             description: `Call with ${event.direction === "inbound" ? event.caller : event.callee} ended`,
             icon: <PhoneOff className="h-4 w-4" />,
@@ -164,10 +181,37 @@ export function RealTimeNotifications({ enabled = false, dataLoaded = false }: R
     }
   }
 
+  // Handle call actions
+  const handleAnswerCall = () => {
+    console.log("Answering call:", activeIncomingCall?.call_id)
+    // In a real implementation, this would call the Zoom API to answer the call
+    setActiveIncomingCall(null)
+  }
+
+  const handleRejectCall = () => {
+    console.log("Rejecting call:", activeIncomingCall?.call_id)
+    // In a real implementation, this would call the Zoom API to reject the call
+    setActiveIncomingCall(null)
+  }
+
   // Show status in development
   if (process.env.NODE_ENV === "development") {
     console.log("RealTimeNotifications render:", { enabled, dataLoaded, shouldEnable })
   }
 
-  return null // This component only handles notifications
+  return (
+    <>
+      {/* Incoming call notification */}
+      {activeIncomingCall && (
+        <div className="fixed top-4 right-4 z-50">
+          <CallNotification
+            call={activeIncomingCall}
+            onAnswer={handleAnswerCall}
+            onReject={handleRejectCall}
+            onClose={() => setActiveIncomingCall(null)}
+          />
+        </div>
+      )}
+    </>
+  )
 }

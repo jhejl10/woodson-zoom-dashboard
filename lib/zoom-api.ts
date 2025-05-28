@@ -417,20 +417,38 @@ export async function getSites() {
 export async function getCommonAreaPhones() {
   try {
     console.log("Fetching common area phones from /phone/common_areas...")
-    const response = await makeZoomPhoneAPIRequest("/common_areas?page_size=300")
-    console.log("Common area phones response:", response)
 
-    // Handle various response structures
-    if (response.common_areas && Array.isArray(response.common_areas)) {
-      return response.common_areas
-    } else if (response.common_area_phones && Array.isArray(response.common_area_phones)) {
-      return response.common_area_phones
-    } else if (Array.isArray(response)) {
-      return response
-    } else {
-      console.warn("Unexpected common areas response structure:", response)
-      return []
+    // Try the correct endpoint first
+    try {
+      const response = await makeZoomPhoneAPIRequest("/common_areas?page_size=300")
+      console.log("Common area phones response from /common_areas:", response)
+
+      // Handle various response structures
+      if (response.common_areas && Array.isArray(response.common_areas)) {
+        return response.common_areas
+      } else if (Array.isArray(response)) {
+        return response
+      }
+    } catch (error) {
+      console.error("Error with /common_areas endpoint, trying fallback:", error)
     }
+
+    // Fallback to alternative endpoint
+    try {
+      const response = await makeZoomPhoneAPIRequest("/common_area_phones?page_size=300")
+      console.log("Common area phones response from /common_area_phones:", response)
+
+      if (response.common_area_phones && Array.isArray(response.common_area_phones)) {
+        return response.common_area_phones
+      } else if (Array.isArray(response)) {
+        return response
+      }
+    } catch (error) {
+      console.error("Error with fallback endpoint:", error)
+    }
+
+    console.warn("Could not retrieve common area phones from any endpoint")
+    return []
   } catch (error) {
     console.error("Error fetching common area phones:", error)
     return []

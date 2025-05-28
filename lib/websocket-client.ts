@@ -110,7 +110,9 @@ class ZoomWebSocketClient extends EventEmitter {
   private handleMessage(message: ZoomWebSocketEvent) {
     switch (message.type) {
       case "call_event":
-        this.emit("call_event", message.data as CallEvent)
+        const callEvent = message.data as CallEvent
+        console.log("Received call event:", callEvent)
+        this.emit("call_event", callEvent)
         break
       case "presence_event":
         this.emit("presence_event", message.data as PresenceEvent)
@@ -123,6 +125,10 @@ class ZoomWebSocketClient extends EventEmitter {
         break
       case "sms_event":
         this.emit("sms_event", message.data)
+        break
+      case "parked_call_event":
+        console.log("Received parked call event:", message.data)
+        this.emit("parked_call_event", message.data)
         break
       case "heartbeat":
         // Respond to heartbeat

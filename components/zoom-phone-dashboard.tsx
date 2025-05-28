@@ -35,6 +35,7 @@ import { SafeErrorBoundary, useErrorHandlers } from "./safe-error-boundary"
 import { RealTimeNotifications } from "./real-time-notifications"
 import { ConnectionStatus } from "./connection-status"
 import { Toaster } from "sonner"
+import { ParkedCallsDisplay } from "./parked-calls-display"
 
 const navigationItems = [
   {
@@ -325,6 +326,7 @@ export function ZoomPhoneDashboard() {
         {/* Add real-time notifications - only enabled after data is loaded */}
         <RealTimeNotifications enabled={realTimeEnabled} dataLoaded={dataLoaded} />
         <Toaster position="top-right" />
+        <ParkedCallsDisplay />
       </SidebarProvider>
     </SafeErrorBoundary>
   )

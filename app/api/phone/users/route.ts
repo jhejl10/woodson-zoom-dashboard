@@ -22,6 +22,9 @@ export async function GET() {
     console.log("- Sites:", Array.isArray(sites) ? sites.length : "not an array")
     console.log("- Common area phones:", Array.isArray(commonAreaPhones) ? commonAreaPhones.length : "not an array")
 
+    // Log raw common area phones for debugging
+    console.log("Raw common area phones data:", JSON.stringify(commonAreaPhones).slice(0, 500))
+
     // Create a site lookup map
     const siteMap = new Map()
     if (Array.isArray(sites)) {
@@ -76,7 +79,11 @@ export async function GET() {
 
           const processedUser = {
             id: user.id,
-            name: `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email || "Unknown User",
+            name:
+              `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+              user.display_name ||
+              user.email ||
+              "Unknown User",
             first_name: user.first_name,
             last_name: user.last_name,
             email: user.email,
@@ -111,6 +118,8 @@ export async function GET() {
             console.warn("Invalid common area phone object:", phone)
             continue
           }
+
+          console.log("Processing common area phone:", phone)
 
           // Extract extension number properly
           let extension = "No extension"

@@ -4,7 +4,6 @@ import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -17,12 +16,12 @@ import {
   UserPlus,
   Filter,
   Building,
-  Users,
   Circle,
   CircleDot,
   Clock,
   Minus,
   SortAsc,
+  Users,
 } from "lucide-react"
 import { UserDetailsDialog } from "./user-details-dialog"
 import { useZoomUsers, ultraSafeProcessArray } from "@/hooks/use-zoom-data"
@@ -68,43 +67,29 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
     return null
   }
 
-  // Mock active call data - replace with real data when available
-  const isOnCall = Math.random() > 0.8 // 20% chance of being on a call
-  const callContact = isOnCall ? "+1 (555) 123-4567" : null
-
   return (
     <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onUserClick(user)}>
       <CardContent className="p-4">
         <div className="flex items-start space-x-3">
-          <div className="relative">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={user?.avatar_url || "/placeholder.svg"} alt={user?.name || "User"} />
-              <AvatarFallback>
-                {user?.type === "common_area" ? (
-                  <Building className="h-4 w-4" />
-                ) : (
-                  (user?.name || "?")
-                    .split(" ")
-                    .map((n: string) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                )}
-              </AvatarFallback>
-            </Avatar>
-            {user?.presence && <div className="absolute -bottom-1 -right-1">{getPresenceIcon(user.presence)}</div>}
-          </div>
-
           <div className="flex-1 min-w-0 space-y-1">
-            {/* 1st Row - Name and Presence Status */}
+            {/* 1st Row - Name and Type */}
             <div className="flex items-center justify-between">
               <h3 className="font-medium truncate">{user?.name || "Unknown User"}</h3>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                {getPresenceIcon(user?.presence || "unknown")}
-                <span>{getPresenceText(user?.presence || "unknown")}</span>
+              <div className="flex items-center gap-1">
+                {user?.type === "common_area" ? (
+                  <Badge variant="outline" className="text-xs">
+                    Common Area
+                  </Badge>
+                ) : (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    {getPresenceIcon(user?.presence || "unknown")}
+                    <span>{getPresenceText(user?.presence || "unknown")}</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* 2nd Row - Extension and Active Call */}
+            {/* 2nd Row - Extension */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
                 <span className="text-sm text-muted-foreground">Ext</span>
@@ -112,12 +97,6 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
                   {user?.extension || "N/A"}
                 </Badge>
               </div>
-              {isOnCall && (
-                <div className="flex items-center gap-1 text-xs text-green-600">
-                  <Phone className="h-3 w-3" />
-                  <span className="animate-pulse">{callContact}</span>
-                </div>
-              )}
             </div>
 
             {/* 3rd Row - Status Message and Call Icon */}
@@ -291,12 +270,6 @@ export function UsersView() {
     }
   }, [users, searchTerm, sortBy, currentUserSite])
 
-  // Calculate stats with enhanced null checks
-  const totalUsers = Array.isArray(users) ? users.length : 0
-  const regularUsers = Array.isArray(users) ? users.filter((u: any) => u && u.type === "user").length : 0
-  const commonAreaPhones = Array.isArray(users) ? users.filter((u: any) => u && u.type === "common_area").length : 0
-  const availableUsers = Array.isArray(users) ? users.filter((u: any) => u && u.presence === "available").length : 0
-
   const handleUserClick = (user: any) => {
     if (user && typeof user === "object") {
       setSelectedUser(user)
@@ -334,50 +307,6 @@ export function UsersView() {
             Add User
           </Button>
         </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{loading ? "..." : totalUsers}</div>
-            <p className="text-xs text-muted-foreground">All users & phones</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{loading ? "..." : regularUsers}</div>
-            <p className="text-xs text-muted-foreground">Regular users</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Common Areas</CardTitle>
-            <Building className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{loading ? "..." : commonAreaPhones}</div>
-            <p className="text-xs text-muted-foreground">Shared phones</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available</CardTitle>
-            <Circle className="h-4 w-4 fill-green-500 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{loading ? "..." : availableUsers}</div>
-            <p className="text-xs text-muted-foreground">Ready for calls</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Search and Sort Controls */}
@@ -480,7 +409,7 @@ export function UsersView() {
                 <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No Users Found</h3>
                 <p className="text-muted-foreground">
-                  {totalUsers === 0
+                  {users.length === 0
                     ? "No users are available in your organization."
                     : "No users match your search criteria."}
                 </p>
