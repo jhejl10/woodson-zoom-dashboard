@@ -1,320 +1,78 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Circle, CircleDot, Clock, Minus, Phone, Search, Users, Building, PhoneCall, MessageSquare } from "lucide-react"
+import { Circle, CircleDot, Minus, Phone, Search, Users, Building, PhoneCall } from "lucide-react"
 import { UserDetailsDialog } from "./user-details-dialog"
+import { useZoomUsers } from "@/hooks/use-zoom-data"
 
-// Sample user data with real-time status
-const usersData = [
-  {
-    id: 1,
-    name: "Sarah Johnson",
-    extension: "1001",
-    presence: "available",
-    statusMessage: "Available for calls",
-    site: "New York Office",
-    location: "Floor 5, Desk 12",
-    title: "Sales Manager",
-    email: "sarah.johnson@company.com",
-    avatar: "/placeholder.svg?height=32&width=32",
-    type: "user",
-    onCall: false,
-    currentCall: null,
-    lastSeen: null,
-  },
-  {
-    id: 2,
-    name: "Mike Chen",
-    extension: "1002",
-    presence: "busy",
-    statusMessage: "In a meeting until 3 PM",
-    site: "New York Office",
-    location: "Floor 3, Conference Room A",
-    title: "Product Manager",
-    email: "mike.chen@company.com",
-    avatar: "/placeholder.svg?height=32&width=32",
-    type: "user",
-    onCall: true,
-    currentCall: "John Smith",
-    currentCallNumber: "+1 (555) 123-4567",
-    lastSeen: null,
-  },
-  {
-    id: 3,
-    name: "Emily Davis",
-    extension: "1003",
-    presence: "away",
-    statusMessage: "Back in 15 minutes",
-    site: "New York Office",
-    location: "Floor 2, Marketing",
-    title: "Marketing Director",
-    email: "emily.davis@company.com",
-    avatar: "/placeholder.svg?height=32&width=32",
-    type: "user",
-    onCall: false,
-    currentCall: null,
-    lastSeen: "5 minutes ago",
-  },
-  {
-    id: 4,
-    name: "Reception Desk",
-    extension: "1000",
-    presence: "available",
-    statusMessage: null,
-    site: "New York Office",
-    location: "Main Lobby",
-    title: "Reception",
-    email: null,
-    avatar: null,
-    type: "common_area",
-    onCall: false,
-    currentCall: null,
-    lastSeen: null,
-  },
-  {
-    id: 5,
-    name: "Alex Rodriguez",
-    extension: "2001",
-    presence: "dnd",
-    statusMessage: "Focus time - urgent only",
-    site: "San Francisco Office",
-    location: "Floor 8, Engineering",
-    title: "Senior Developer",
-    email: "alex.rodriguez@company.com",
-    avatar: "/placeholder.svg?height=32&width=32",
-    type: "user",
-    onCall: false,
-    currentCall: null,
-    lastSeen: null,
-  },
-  {
-    id: 6,
-    name: "Conference Room 1",
-    extension: "2000",
-    presence: "busy",
-    statusMessage: null,
-    site: "San Francisco Office",
-    location: "Floor 8, Conference Room 1",
-    title: "Conference Room",
-    email: null,
-    avatar: null,
-    type: "common_area",
-    onCall: true,
-    currentCall: "Team Meeting",
-    currentCallNumber: "Internal Call",
-    lastSeen: null,
-  },
-  {
-    id: 7,
-    name: "Lisa Wang",
-    extension: "2002",
-    presence: "offline",
-    statusMessage: null,
-    site: "San Francisco Office",
-    location: "Floor 7, Design",
-    title: "UX Designer",
-    email: "lisa.wang@company.com",
-    avatar: "/placeholder.svg?height=32&width=32",
-    type: "user",
-    onCall: false,
-    currentCall: null,
-    lastSeen: "2 hours ago",
-  },
-  {
-    id: 8,
-    name: "David Kim",
-    extension: "3001",
-    presence: "available",
-    statusMessage: "Happy to help!",
-    site: "Austin Office",
-    location: "Floor 1, Support",
-    title: "Customer Support",
-    email: "david.kim@company.com",
-    avatar: "/placeholder.svg?height=32&width=32",
-    type: "user",
-    onCall: true,
-    currentCall: "Customer Call",
-    currentCallNumber: "+1 (555) 987-6543",
-    lastSeen: null,
-  },
-]
+// Remove the hardcoded usersData array and replace the component logic:
 
-function getPresenceIcon(presence: string) {
-  switch (presence) {
-    case "available":
-      return <Circle className="h-3 w-3 fill-green-500 text-green-500" />
-    case "busy":
-      return <CircleDot className="h-3 w-3 fill-red-500 text-red-500" />
-    case "away":
-      return <Clock className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-    case "dnd":
-      return <Minus className="h-3 w-3 fill-red-600 text-red-600" />
-    case "offline":
-      return <Circle className="h-3 w-3 fill-gray-400 text-gray-400" />
-    default:
-      return <Circle className="h-3 w-3 fill-gray-500 text-gray-500" />
-  }
+interface SiteGroupProps {
+  siteName: string
+  users: any[]
+  onUserClick: (user: any) => void
 }
 
-function getPresenceColor(presence: string) {
-  switch (presence) {
-    case "available":
-      return "bg-green-500"
-    case "busy":
-      return "bg-red-500"
-    case "away":
-      return "bg-yellow-500"
-    case "dnd":
-      return "bg-red-600"
-    case "offline":
-      return "bg-gray-400"
-    default:
-      return "bg-gray-500"
-  }
-}
-
-function UserItem({ user, onClick }: { user: any; onClick: () => void }) {
-  const [showCallInfo, setShowCallInfo] = useState(true)
-
-  // Toggle between caller name and number every 3 seconds when on call
-  useEffect(() => {
-    if (user.onCall && user.currentCallNumber) {
-      const interval = setInterval(() => {
-        setShowCallInfo((prev) => !prev)
-      }, 3000)
-      return () => clearInterval(interval)
-    }
-  }, [user.onCall, user.currentCallNumber])
-
+function SiteGroup({ siteName, users, onUserClick }: SiteGroupProps) {
   return (
-    <div
-      className="flex items-center space-x-3 p-3 hover:bg-muted/50 rounded-lg cursor-pointer transition-colors"
-      onClick={onClick}
-    >
-      <div className="relative">
-        <Avatar className="h-10 w-10">
-          <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-          <AvatarFallback className={user.type === "common_area" ? "bg-blue-100" : ""}>
-            {user.type === "common_area" ? (
-              <Building className="h-4 w-4" />
-            ) : (
-              user.name
-                .split(" ")
-                .map((n: string) => n[0])
-                .join("")
-            )}
-          </AvatarFallback>
-        </Avatar>
-        <div
-          className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-background ${getPresenceColor(
-            user.presence,
-          )}`}
-        />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium truncate">{user.name}</p>
-          <Badge variant="outline" className="text-xs">
-            {user.extension}
-          </Badge>
-          {user.type === "common_area" && (
-            <Badge variant="secondary" className="text-xs">
-              Common Area
-            </Badge>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1 mt-1">
-          {getPresenceIcon(user.presence)}
-          <span className="text-xs text-muted-foreground">
-            {user.onCall ? (
-              <span className="flex items-center gap-1">
-                <PhoneCall className="h-3 w-3" />
-                {user.currentCallNumber && showCallInfo ? user.currentCallNumber : user.currentCall}
-              </span>
-            ) : user.statusMessage ? (
-              user.statusMessage
-            ) : user.lastSeen ? (
-              `Last seen ${user.lastSeen}`
-            ) : (
-              user.presence.charAt(0).toUpperCase() + user.presence.slice(1)
-            )}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={(e) => {
-            e.stopPropagation()
-            // Handle call action
-          }}
-        >
-          <Phone className="h-3 w-3" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={(e) => {
-            e.stopPropagation()
-            // Handle message action
-          }}
-        >
-          <MessageSquare className="h-3 w-3" />
-        </Button>
+    <div className="space-y-2">
+      <h3 className="text-lg font-semibold">{siteName}</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {users.map((user) => (
+          <Card
+            key={user.id}
+            className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+            onClick={() => onUserClick(user)}
+          >
+            <CardContent className="flex flex-col items-center justify-center p-4">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="text-center mt-2">
+                <p className="font-medium">{user.name}</p>
+                <p className="text-sm text-muted-foreground">{user.extension}</p>
+                {user.statusMessage && (
+                  <Badge variant="secondary" className="mt-1">
+                    {user.statusMessage}
+                  </Badge>
+                )}
+                {user.onCall && (
+                  <div className="flex items-center space-x-1 mt-1">
+                    <Phone className="h-4 w-4 text-green-500" />
+                    <span className="text-sm text-green-500">On Call</span>
+                  </div>
+                )}
+                {user.presence === "available" && (
+                  <div className="flex items-center space-x-1 mt-1">
+                    <CircleDot className="h-4 w-4 text-green-500" />
+                    <span className="text-sm text-green-500">Available</span>
+                  </div>
+                )}
+                {user.presence === "busy" && (
+                  <div className="flex items-center space-x-1 mt-1">
+                    <Minus className="h-4 w-4 text-red-500" />
+                    <span className="text-sm text-red-500">Busy</span>
+                  </div>
+                )}
+                {user.presence === "offline" && (
+                  <div className="flex items-center space-x-1 mt-1">
+                    <Circle className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm text-gray-500">Offline</span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
-  )
-}
-
-function SiteGroup({
-  siteName,
-  users,
-  onUserClick,
-}: { siteName: string; users: any[]; onUserClick: (user: any) => void }) {
-  const totalUsers = users.length
-  const availableUsers = users.filter((u) => u.presence === "available").length
-  const onCallUsers = users.filter((u) => u.onCall).length
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Building className="h-4 w-4" />
-            {siteName}
-          </CardTitle>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>
-              {availableUsers}/{totalUsers} available
-            </span>
-            {onCallUsers > 0 && (
-              <Badge variant="outline" className="text-xs">
-                {onCallUsers} on call
-              </Badge>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="space-y-1">
-          {users.map((user) => (
-            <UserItem key={user.id} user={user} onClick={() => onUserClick(user)} />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
   )
 }
 
@@ -324,8 +82,35 @@ export function UsersView() {
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
+  // Use real data from the API
+  const { users: usersData, loading, error, refetch } = useZoomUsers()
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center space-y-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="text-muted-foreground">Loading users...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center space-y-2">
+          <p className="text-red-600">Error loading users: {error}</p>
+          <Button onClick={refetch}>Try Again</Button>
+        </div>
+      </div>
+    )
+  }
+
   // Group users by site
-  const groupedUsers = usersData.reduce(
+  const groupedUsers = usersData?.reduce(
     (acc, user) => {
       if (!acc[user.site]) {
         acc[user.site] = []
@@ -337,7 +122,7 @@ export function UsersView() {
   )
 
   // Filter users based on search and site selection
-  const filteredGroupedUsers = Object.entries(groupedUsers).reduce(
+  const filteredGroupedUsers = Object.entries(groupedUsers || {}).reduce(
     (acc, [site, users]) => {
       if (selectedSite !== "all" && site !== selectedSite) {
         return acc
@@ -359,10 +144,10 @@ export function UsersView() {
     {} as Record<string, any[]>,
   )
 
-  const sites = Object.keys(groupedUsers)
-  const totalUsers = usersData.length
-  const availableUsers = usersData.filter((u) => u.presence === "available").length
-  const onCallUsers = usersData.filter((u) => u.onCall).length
+  const sites = Object.keys(groupedUsers || {})
+  const totalUsers = usersData?.length || 0
+  const availableUsers = usersData?.filter((u) => u.presence === "available").length || 0
+  const onCallUsers = usersData?.filter((u) => u.onCall).length || 0
 
   const handleUserClick = (user: any) => {
     setSelectedUser(user)

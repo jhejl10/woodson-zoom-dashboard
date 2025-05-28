@@ -39,120 +39,121 @@ import {
   Copy,
 } from "lucide-react"
 import { format } from "date-fns"
+import { useCallRecordings } from "@/hooks/use-call-recordings"
 
 // Sample call recordings data
-const sampleRecordings = [
-  {
-    id: "rec_001",
-    call_id: "call_001",
-    recording_type: "automatic",
-    file_type: "mp3",
-    file_size: 2048576, // 2MB
-    duration: 185, // 3:05
-    download_url: "/api/recordings/rec_001/download",
-    play_url: "/api/recordings/rec_001/play",
-    start_time: "2024-01-15T10:30:00Z",
-    end_time: "2024-01-15T10:33:05Z",
-    participants: [
-      {
-        user_id: "user_001",
-        user_name: "John Doe",
-        user_email: "john.doe@company.com",
-        join_time: "2024-01-15T10:30:00Z",
-        leave_time: "2024-01-15T10:33:05Z",
-      },
-      {
-        user_id: "external",
-        user_name: "Sarah Johnson",
-        user_email: "sarah@client.com",
-        join_time: "2024-01-15T10:30:15Z",
-        leave_time: "2024-01-15T10:33:05Z",
-      },
-    ],
-    caller_number: "+1 (555) 123-4567",
-    callee_number: "+1 (555) 987-6543",
-    direction: "outbound",
-    status: "completed",
-    transcript: {
-      id: "trans_001",
-      status: "completed",
-      content:
-        "John: Hi Sarah, thanks for taking my call today. I wanted to discuss the project timeline.\n\nSarah: Of course! I've been looking forward to this conversation. What specific aspects would you like to cover?\n\nJohn: Well, primarily the deliverables for Q1 and how we can ensure we meet the March deadline...",
-      confidence: 0.92,
-      language: "en-US",
-    },
-    created_at: "2024-01-15T10:33:10Z",
-    updated_at: "2024-01-15T10:35:00Z",
-  },
-  {
-    id: "rec_002",
-    call_id: "call_002",
-    recording_type: "on_demand",
-    file_type: "mp3",
-    file_size: 1536000, // 1.5MB
-    duration: 142, // 2:22
-    download_url: "/api/recordings/rec_002/download",
-    play_url: "/api/recordings/rec_002/play",
-    start_time: "2024-01-15T14:15:00Z",
-    end_time: "2024-01-15T14:17:22Z",
-    participants: [
-      {
-        user_id: "user_001",
-        user_name: "John Doe",
-        user_email: "john.doe@company.com",
-        join_time: "2024-01-15T14:15:00Z",
-        leave_time: "2024-01-15T14:17:22Z",
-      },
-    ],
-    caller_number: "+1 (555) 456-7890",
-    callee_number: "+1 (555) 123-4567",
-    direction: "inbound",
-    status: "completed",
-    transcript: {
-      id: "trans_002",
-      status: "processing",
-      content: "",
-      confidence: 0,
-      language: "en-US",
-    },
-    created_at: "2024-01-15T14:17:30Z",
-    updated_at: "2024-01-15T14:17:30Z",
-  },
-  {
-    id: "rec_003",
-    call_id: "call_003",
-    recording_type: "automatic",
-    file_type: "mp3",
-    file_size: 3072000, // 3MB
-    duration: 298, // 4:58
-    download_url: "/api/recordings/rec_003/download",
-    play_url: "/api/recordings/rec_003/play",
-    start_time: "2024-01-14T16:45:00Z",
-    end_time: "2024-01-14T16:49:58Z",
-    participants: [
-      {
-        user_id: "user_001",
-        user_name: "John Doe",
-        user_email: "john.doe@company.com",
-        join_time: "2024-01-14T16:45:00Z",
-        leave_time: "2024-01-14T16:49:58Z",
-      },
-      {
-        user_id: "user_002",
-        user_name: "Mike Chen",
-        user_email: "mike.chen@company.com",
-        join_time: "2024-01-14T16:45:30Z",
-        leave_time: "2024-01-14T16:49:58Z",
-      },
-    ],
-    caller_number: "+1 (555) 234-5678",
-    callee_number: "+1 (555) 345-6789",
-    direction: "inbound",
-    status: "completed",
-    created_at: "2024-01-14T16:50:05Z",
-    updated_at: "2024-01-14T16:50:05Z",
-  },
-]
+// const sampleRecordings = [
+//   {
+//     id: "rec_001",
+//     call_id: "call_001",
+//     recording_type: "automatic",
+//     file_type: "mp3",
+//     file_size: 2048576, // 2MB
+//     duration: 185, // 3:05
+//     download_url: "/api/recordings/rec_001/download",
+//     play_url: "/api/recordings/rec_001/play",
+//     start_time: "2024-01-15T10:30:00Z",
+//     end_time: "2024-01-15T10:33:05Z",
+//     participants: [
+//       {
+//         user_id: "user_001",
+//         user_name: "John Doe",
+//         user_email: "john.doe@company.com",
+//         join_time: "2024-01-15T10:30:00Z",
+//         leave_time: "2024-01-15T10:33:05Z",
+//       },
+//       {
+//         user_id: "external",
+//         user_name: "Sarah Johnson",
+//         user_email: "sarah@client.com",
+//         join_time: "2024-01-15T10:30:15Z",
+//         leave_time: "2024-01-15T10:33:05Z",
+//       },
+//     ],
+//     caller_number: "+1 (555) 123-4567",
+//     callee_number: "+1 (555) 987-6543",
+//     direction: "outbound",
+//     status: "completed",
+//     transcript: {
+//       id: "trans_001",
+//       status: "completed",
+//       content:
+//         "John: Hi Sarah, thanks for taking my call today. I wanted to discuss the project timeline.\n\nSarah: Of course! I've been looking forward to this conversation. What specific aspects would you like to cover?\n\nJohn: Well, primarily the deliverables for Q1 and how we can ensure we meet the March deadline...",
+//       confidence: 0.92,
+//       language: "en-US",
+//     },
+//     created_at: "2024-01-15T10:33:10Z",
+//     updated_at: "2024-01-15T10:35:00Z",
+//   },
+//   {
+//     id: "rec_002",
+//     call_id: "call_002",
+//     recording_type: "on_demand",
+//     file_type: "mp3",
+//     file_size: 1536000, // 1.5MB
+//     duration: 142, // 2:22
+//     download_url: "/api/recordings/rec_002/download",
+//     play_url: "/api/recordings/rec_002/play",
+//     start_time: "2024-01-15T14:15:00Z",
+//     end_time: "2024-01-15T14:17:22Z",
+//     participants: [
+//       {
+//         user_id: "user_001",
+//         user_name: "John Doe",
+//         user_email: "john.doe@company.com",
+//         join_time: "2024-01-15T14:15:00Z",
+//         leave_time: "2024-01-15T14:17:22Z",
+//       },
+//     ],
+//     caller_number: "+1 (555) 456-7890",
+//     callee_number: "+1 (555) 123-4567",
+//     direction: "inbound",
+//     status: "completed",
+//     transcript: {
+//       id: "trans_002",
+//       status: "processing",
+//       content: "",
+//       confidence: 0,
+//       language: "en-US",
+//     },
+//     created_at: "2024-01-15T14:17:30Z",
+//     updated_at: "2024-01-15T14:17:30Z",
+//   },
+//   {
+//     id: "rec_003",
+//     call_id: "call_003",
+//     recording_type: "automatic",
+//     file_type: "mp3",
+//     file_size: 3072000, // 3MB
+//     duration: 298, // 4:58
+//     download_url: "/api/recordings/rec_003/download",
+//     play_url: "/api/recordings/rec_003/play",
+//     start_time: "2024-01-14T16:45:00Z",
+//     end_time: "2024-01-14T16:49:58Z",
+//     participants: [
+//       {
+//         user_id: "user_001",
+//         user_name: "John Doe",
+//         user_email: "john.doe@company.com",
+//         join_time: "2024-01-14T16:45:00Z",
+//         leave_time: "2024-01-14T16:49:58Z",
+//       },
+//       {
+//         user_id: "user_002",
+//         user_name: "Mike Chen",
+//         user_email: "mike.chen@company.com",
+//         join_time: "2024-01-14T16:45:30Z",
+//         leave_time: "2024-01-14T16:49:58Z",
+//       },
+//     ],
+//     caller_number: "+1 (555) 234-5678",
+//     callee_number: "+1 (555) 345-6789",
+//     direction: "inbound",
+//     status: "completed",
+//     created_at: "2024-01-14T16:50:05Z",
+//     updated_at: "2024-01-14T16:50:05Z",
+//   },
+// ]
 
 function formatDuration(seconds: number): string {
   const minutes = Math.floor(seconds / 60)
@@ -503,7 +504,6 @@ function TranscriptViewer({ recording }: { recording: any }) {
 }
 
 export function CallRecordingsView() {
-  const [recordings] = useState(sampleRecordings)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedRecording, setSelectedRecording] = useState<any>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -511,7 +511,34 @@ export function CallRecordingsView() {
   const [volume, setVolume] = useState(75)
   const audioRef = useRef<HTMLAudioElement>(null)
 
-  const filteredRecordings = recordings.filter(
+  // Use real data from the API
+  const { recordings, loading, error, refetch } = useCallRecordings()
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center space-y-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="text-muted-foreground">Loading recordings...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center space-y-2">
+          <p className="text-red-600">Error loading recordings: {error}</p>
+          <Button onClick={refetch}>Try Again</Button>
+        </div>
+      </div>
+    )
+  }
+
+  const filteredRecordings = recordings?.filter(
     (recording) =>
       recording.caller_number.includes(searchTerm) ||
       recording.callee_number.includes(searchTerm) ||
@@ -550,18 +577,27 @@ export function CallRecordingsView() {
   }
 
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-
-    const updateTime = () => setCurrentTime(audio.currentTime)
+    let audio: HTMLAudioElement | null = null
+    const updateTime = () => {
+      if (audio) {
+        setCurrentTime(audio.currentTime)
+      }
+    }
     const handleEnded = () => setIsPlaying(false)
 
-    audio.addEventListener("timeupdate", updateTime)
-    audio.addEventListener("ended", handleEnded)
+    if (selectedRecording) {
+      audio = audioRef.current
+      if (!audio) return
+
+      audio.addEventListener("timeupdate", updateTime)
+      audio.addEventListener("ended", handleEnded)
+    }
 
     return () => {
-      audio.removeEventListener("timeupdate", updateTime)
-      audio.removeEventListener("ended", handleEnded)
+      if (audio) {
+        audio.removeEventListener("timeupdate", updateTime)
+        audio.removeEventListener("ended", handleEnded)
+      }
     }
   }, [selectedRecording])
 
@@ -575,7 +611,7 @@ export function CallRecordingsView() {
             <FileAudio className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{recordings.length}</div>
+            <div className="text-2xl font-bold">{recordings?.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -585,7 +621,7 @@ export function CallRecordingsView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatDuration(recordings.reduce((sum, r) => sum + r.duration, 0))}
+              {formatDuration(recordings?.reduce((sum, r) => sum + r.duration, 0))}
             </div>
           </CardContent>
         </Card>
@@ -596,7 +632,7 @@ export function CallRecordingsView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatFileSize(recordings.reduce((sum, r) => sum + r.file_size, 0))}
+              {formatFileSize(recordings?.reduce((sum, r) => sum + r.file_size, 0))}
             </div>
           </CardContent>
         </Card>
@@ -607,7 +643,7 @@ export function CallRecordingsView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {recordings.filter((r) => r.transcript?.status === "completed").length}
+              {recordings?.filter((r) => r.transcript?.status === "completed").length}
             </div>
           </CardContent>
         </Card>
@@ -648,13 +684,13 @@ export function CallRecordingsView() {
             <CardHeader>
               <CardTitle>Call Recordings</CardTitle>
               <CardDescription>
-                {filteredRecordings.length} of {recordings.length} recordings
+                {filteredRecordings?.length} of {recordings?.length} recordings
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <ScrollArea className="h-96">
                 <div className="space-y-2 p-4">
-                  {filteredRecordings.map((recording) => (
+                  {filteredRecordings?.map((recording) => (
                     <RecordingItem key={recording.id} recording={recording} onPlay={handlePlayRecording} />
                   ))}
                 </div>

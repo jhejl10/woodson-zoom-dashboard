@@ -5,52 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Building, Phone, Clock, Users, AlertCircle, TrendingUp } from "lucide-react"
-
-const callQueuesData = [
-  {
-    id: 1,
-    name: "Sales Queue",
-    site: "New York Office",
-    waitingCalls: 3,
-    longestWait: "2:45",
-    averageWait: "1:23",
-    agents: [
-      { name: "Sarah Johnson", status: "available", avatar: "/placeholder.svg?height=32&width=32" },
-      { name: "Mike Chen", status: "busy", avatar: "/placeholder.svg?height=32&width=32" },
-      { name: "Emily Davis", status: "away", avatar: "/placeholder.svg?height=32&width=32" },
-    ],
-    totalAgents: 5,
-    availableAgents: 2,
-  },
-  {
-    id: 2,
-    name: "Support Queue",
-    site: "New York Office",
-    waitingCalls: 1,
-    longestWait: "0:45",
-    averageWait: "0:32",
-    agents: [
-      { name: "Alex Rodriguez", status: "available", avatar: "/placeholder.svg?height=32&width=32" },
-      { name: "Lisa Wang", status: "busy", avatar: "/placeholder.svg?height=32&width=32" },
-    ],
-    totalAgents: 3,
-    availableAgents: 1,
-  },
-  {
-    id: 3,
-    name: "Engineering Queue",
-    site: "San Francisco Office",
-    waitingCalls: 0,
-    longestWait: "0:00",
-    averageWait: "0:00",
-    agents: [
-      { name: "David Kim", status: "available", avatar: "/placeholder.svg?height=32&width=32" },
-      { name: "Jennifer Liu", status: "available", avatar: "/placeholder.svg?height=32&width=32" },
-    ],
-    totalAgents: 4,
-    availableAgents: 2,
-  },
-]
+import { useZoomQueues } from "@/hooks/use-zoom-data"
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -65,7 +20,7 @@ function getStatusColor(status: string) {
   }
 }
 
-function QueueCard({ queue }: { queue: (typeof callQueuesData)[0] }) {
+function QueueCard({ queue }: { queue: any }) {
   const hasWaitingCalls = queue.waitingCalls > 0
   const isUrgent = queue.waitingCalls > 2 || (queue.longestWait && Number.parseInt(queue.longestWait.split(":")[0]) > 3)
 
@@ -110,7 +65,7 @@ function QueueCard({ queue }: { queue: (typeof callQueuesData)[0] }) {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {queue.agents.map((agent, index) => (
+            {queue.agents.map((agent: any, index: number) => (
               <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
                 <div className="relative">
                   <Avatar className="h-6 w-6">
@@ -118,7 +73,7 @@ function QueueCard({ queue }: { queue: (typeof callQueuesData)[0] }) {
                     <AvatarFallback className="text-xs">
                       {agent.name
                         .split(" ")
-                        .map((n) => n[0])
+                        .map((n: string) => n[0])
                         .join("")}
                     </AvatarFallback>
                   </Avatar>
@@ -148,10 +103,10 @@ function QueueCard({ queue }: { queue: (typeof callQueuesData)[0] }) {
   )
 }
 
-function SiteQueueGroup({ siteName, queues }: { siteName: string; queues: typeof callQueuesData }) {
-  const totalWaiting = queues.reduce((sum, queue) => sum + queue.waitingCalls, 0)
-  const totalAgents = queues.reduce((sum, queue) => sum + queue.totalAgents, 0)
-  const availableAgents = queues.reduce((sum, queue) => sum + queue.availableAgents, 0)
+function SiteQueueGroup({ siteName, queues }: { siteName: string; queues: any }) {
+  const totalWaiting = queues.reduce((sum: number, queue: any) => sum + queue.waitingCalls, 0)
+  const totalAgents = queues.reduce((sum: number, queue: any) => sum + queue.totalAgents, 0)
+  const availableAgents = queues.reduce((sum: number, queue: any) => sum + queue.availableAgents, 0)
 
   return (
     <div className="space-y-4">
@@ -168,7 +123,7 @@ function SiteQueueGroup({ siteName, queues }: { siteName: string; queues: typeof
         </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {queues.map((queue) => (
+        {queues.map((queue: any) => (
           <QueueCard key={queue.id} queue={queue} />
         ))}
       </div>
@@ -177,21 +132,48 @@ function SiteQueueGroup({ siteName, queues }: { siteName: string; queues: typeof
 }
 
 export function CallQueuesView() {
+  // Use real data from the API
+  const { queues: callQueuesData, loading, error, refetch } = useZoomQueues()
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center space-y-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="text-muted-foreground">Loading call queues...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center space-y-2">
+          <p className="text-red-600">Error loading queues: {error}</p>
+          <Button onClick={refetch}>Try Again</Button>
+        </div>
+      </div>
+    )
+  }
+
   // Group queues by site
-  const groupedQueues = callQueuesData.reduce(
-    (acc, queue) => {
+  const groupedQueues = callQueuesData?.reduce(
+    (acc: any, queue: any) => {
       if (!acc[queue.site]) {
         acc[queue.site] = []
       }
       acc[queue.site].push(queue)
       return acc
     },
-    {} as Record<string, typeof callQueuesData>,
+    {} as Record<string, any>,
   )
 
-  const totalWaiting = callQueuesData.reduce((sum, queue) => sum + queue.waitingCalls, 0)
-  const totalQueues = callQueuesData.length
-  const urgentQueues = callQueuesData.filter((q) => q.waitingCalls > 2).length
+  const totalWaiting = callQueuesData?.reduce((sum: number, queue: any) => sum + queue.waitingCalls, 0)
+  const totalQueues = callQueuesData?.length || 0
+  const urgentQueues = callQueuesData?.filter((q: any) => q.waitingCalls > 2).length || 0
 
   return (
     <div className="space-y-6">
@@ -230,14 +212,14 @@ export function CallQueuesView() {
             <Building className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{Object.keys(groupedQueues).length}</div>
+            <div className="text-2xl font-bold">{Object.keys(groupedQueues || {}).length}</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Queues by Site */}
       <div className="space-y-8">
-        {Object.entries(groupedQueues).map(([site, queues]) => (
+        {Object.entries(groupedQueues || {}).map(([site, queues]) => (
           <SiteQueueGroup key={site} siteName={site} queues={queues} />
         ))}
       </div>

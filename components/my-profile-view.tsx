@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Phone, PhoneIncoming, PhoneOutgoing, Voicemail, MessageSquare, Download, Volume2, Filter } from "lucide-react"
+import { useZoomCalls, useZoomVoicemails } from "@/hooks/use-zoom-data"
 
 // Sample data for the current user
 const recentCalls = [
@@ -191,6 +192,45 @@ function TextMessageItem({ message }: { message: (typeof textMessages)[0] }) {
 }
 
 export function MyProfileView() {
+  // Use real data from the API
+  // const { calls: recentCalls, loading: callsLoading } = useZoomCalls("history")
+  // const { voicemails, loading: voicemailsLoading } = useZoomVoicemails()
+
+  // You can keep the textMessages as sample data for now since SMS might not be available
+  // const textMessages = [
+  //   {
+  //     id: 1,
+  //     from: "Sarah Johnson",
+  //     number: "+1 (555) 123-4567",
+  //     message: "Thanks for the call earlier. I'll send over the documents by EOD.",
+  //     time: "10 minutes ago",
+  //     isRead: true,
+  //   },
+  //   {
+  //     id: 2,
+  //     from: "Mike Chen",
+  //     number: "+1 (555) 987-6543",
+  //     message: "Can we reschedule our 3 PM meeting to 4 PM?",
+  //     time: "1 hour ago",
+  //     isRead: false,
+  //   },
+  // ]
+
+  const { calls: zoomCalls, loading: callsLoading } = useZoomCalls("history")
+  const { zoomVoicemails, loading: voicemailsLoading } = useZoomVoicemails()
+
+  const isLoading = callsLoading || voicemailsLoading
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center space-y-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="text-muted-foreground">Loading profile data...</p>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="space-y-6">
       {/* Profile Header */}
@@ -284,7 +324,7 @@ export function MyProfileView() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="space-y-1">
-                {recentCalls.map((call) => (
+                {zoomCalls.map((call) => (
                   <RecentCallItem key={call.id} call={call} />
                 ))}
               </div>
@@ -300,7 +340,7 @@ export function MyProfileView() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="space-y-1">
-                {voicemails.map((voicemail) => (
+                {zoomVoicemails.map((voicemail) => (
                   <VoicemailItem key={voicemail.id} voicemail={voicemail} />
                 ))}
               </div>
