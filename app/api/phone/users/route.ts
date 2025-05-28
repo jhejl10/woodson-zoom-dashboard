@@ -17,27 +17,12 @@ export async function GET() {
     const sites = sitesResult.status === "fulfilled" ? sitesResult.value : []
     const commonAreaPhones = commonAreaPhonesResult.status === "fulfilled" ? commonAreaPhonesResult.value : []
 
-    console.log("Fetched data:")
-    console.log("- Phone users:", Array.isArray(phoneUsers) ? phoneUsers.length : "not an array", phoneUsers)
-    console.log("- Sites:", Array.isArray(sites) ? sites.length : "not an array", sites)
-    console.log(
-      "- Common area phones:",
-      Array.isArray(commonAreaPhones) ? commonAreaPhones.length : "not an array",
-      commonAreaPhones,
-    )
+    console.log("Fetched raw data:")
+    console.log("- Phone users:", Array.isArray(phoneUsers) ? phoneUsers.length : "not an array")
+    console.log("- Sites:", Array.isArray(sites) ? sites.length : "not an array")
+    console.log("- Common area phones:", Array.isArray(commonAreaPhones) ? commonAreaPhones.length : "not an array")
 
-    // Log any failed requests
-    if (phoneUsersResult.status === "rejected") {
-      console.error("Failed to fetch phone users:", phoneUsersResult.reason)
-    }
-    if (sitesResult.status === "rejected") {
-      console.error("Failed to fetch sites:", sitesResult.reason)
-    }
-    if (commonAreaPhonesResult.status === "rejected") {
-      console.error("Failed to fetch common area phones:", commonAreaPhonesResult.reason)
-    }
-
-    // Create a site lookup map with safe array handling
+    // Create a site lookup map
     const siteMap = new Map()
     if (Array.isArray(sites)) {
       sites.forEach((site: any) => {
@@ -47,7 +32,7 @@ export async function GET() {
       })
     }
 
-    // Process regular users with safe array handling
+    // Process regular users with proper extension extraction
     const processedUsers: any[] = []
     if (Array.isArray(phoneUsers)) {
       for (const user of phoneUsers) {
@@ -57,12 +42,36 @@ export async function GET() {
             continue
           }
 
+          // Extract extension number properly
+          let extension = "No extension"
+          if (user.extension_number) {
+            extension = user.extension_number.toString()
+          } else if (user.extension && user.extension.number) {
+            extension = user.extension.number.toString()
+          } else if (user.phone_numbers && Array.isArray(user.phone_numbers)) {
+            const phoneNumber = user.phone_numbers.find((p: any) => p.type === "extension")
+            if (phoneNumber) {
+              extension = phoneNumber.number
+            }
+          }
+
+          // Extract phone number
+          let phoneNumber = null
+          if (user.phone_number) {
+            phoneNumber = user.phone_number
+          } else if (user.phone_numbers && Array.isArray(user.phone_numbers)) {
+            const directNumber = user.phone_numbers.find((p: any) => p.type === "direct")
+            if (directNumber) {
+              phoneNumber = directNumber.number
+            }
+          }
+
           // Try to get presence status
           let presence = null
           try {
             presence = await getUserPresence(user.id)
           } catch (error) {
-            console.log(`Could not fetch presence for user ${user.id}:`, error)
+            console.log(`Could not fetch presence for user ${user.id}`)
           }
 
           const processedUser = {
@@ -71,11 +80,11 @@ export async function GET() {
             first_name: user.first_name,
             last_name: user.last_name,
             email: user.email,
-            extension: user.extension?.number || user.phone_number || "No extension",
-            phone_number: user.phone_number,
+            extension: extension,
+            phone_number: phoneNumber,
             site: siteMap.get(user.site_id) || "Unknown Site",
             site_id: user.site_id,
-            status: user.status,
+            status: user.status || "active",
             presence: presence?.status || "unknown",
             presence_status: presence?.status_message || null,
             type: "user",
@@ -86,13 +95,14 @@ export async function GET() {
           }
 
           processedUsers.push(processedUser)
+          console.log(`Processed user: ${processedUser.name} - Ext: ${processedUser.extension}`)
         } catch (error) {
           console.error("Error processing user:", user, error)
         }
       }
     }
 
-    // Process common area phones with safe array handling
+    // Process common area phones with proper extension extraction
     const processedCommonAreaPhones: any[] = []
     if (Array.isArray(commonAreaPhones)) {
       for (const phone of commonAreaPhones) {
@@ -102,11 +112,35 @@ export async function GET() {
             continue
           }
 
+          // Extract extension number properly
+          let extension = "No extension"
+          if (phone.extension_number) {
+            extension = phone.extension_number.toString()
+          } else if (phone.extension && phone.extension.number) {
+            extension = phone.extension.number.toString()
+          } else if (phone.phone_numbers && Array.isArray(phone.phone_numbers)) {
+            const phoneNumber = phone.phone_numbers.find((p: any) => p.type === "extension")
+            if (phoneNumber) {
+              extension = phoneNumber.number
+            }
+          }
+
+          // Extract phone number
+          let phoneNumber = null
+          if (phone.phone_number) {
+            phoneNumber = phone.phone_number
+          } else if (phone.phone_numbers && Array.isArray(phone.phone_numbers)) {
+            const directNumber = phone.phone_numbers.find((p: any) => p.type === "direct")
+            if (directNumber) {
+              phoneNumber = directNumber.number
+            }
+          }
+
           const processedPhone = {
             id: phone.id,
             name: phone.name || phone.display_name || `Common Area ${phone.id}`,
-            extension: phone.extension?.number || phone.phone_number || "No extension",
-            phone_number: phone.phone_number,
+            extension: extension,
+            phone_number: phoneNumber,
             site: siteMap.get(phone.site_id) || "Unknown Site",
             site_id: phone.site_id,
             status: phone.status || "active",
@@ -120,6 +154,7 @@ export async function GET() {
           }
 
           processedCommonAreaPhones.push(processedPhone)
+          console.log(`Processed common area: ${processedPhone.name} - Ext: ${processedPhone.extension}`)
         } catch (error) {
           console.error("Error processing common area phone:", phone, error)
         }
@@ -144,6 +179,8 @@ export async function GET() {
         raw_phone_users_count: Array.isArray(phoneUsers) ? phoneUsers.length : 0,
         raw_common_areas_count: Array.isArray(commonAreaPhones) ? commonAreaPhones.length : 0,
         sites_count: Array.isArray(sites) ? sites.length : 0,
+        sample_user: processedUsers[0] || null,
+        sample_common_area: processedCommonAreaPhones[0] || null,
       },
     })
   } catch (error) {
@@ -152,7 +189,7 @@ export async function GET() {
       {
         error: "Failed to fetch users",
         details: error instanceof Error ? error.message : "Unknown error",
-        users: [], // Always return an empty array to prevent forEach errors
+        users: [],
         total: 0,
         regular_users: 0,
         common_area_phones: 0,

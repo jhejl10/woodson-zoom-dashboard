@@ -22,7 +22,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Circle, CircleDot, Clock, Minus, Settings, User, Edit } from "lucide-react"
+import { Circle, CircleDot, Clock, Minus, Settings, User, Edit, Loader2 } from "lucide-react"
+import { useCurrentUser } from "@/hooks/use-current-user"
 
 const presenceOptions = [
   { value: "available", label: "Available", icon: Circle, color: "text-green-500 fill-green-500" },
@@ -32,30 +33,84 @@ const presenceOptions = [
 ]
 
 export function ProfileDropdown() {
-  const [presence, setPresence] = useState("available")
-  const [statusMessage, setStatusMessage] = useState("Available for calls")
+  const { user, loading, updatePresence } = useCurrentUser()
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
+  const [tempPresence, setTempPresence] = useState("")
+  const [tempStatusMessage, setTempStatusMessage] = useState("")
+  const [isUpdating, setIsUpdating] = useState(false)
 
-  const currentPresence = presenceOptions.find((p) => p.value === presence)
-  const PresenceIcon = currentPresence?.icon || Circle
+  // Set temp values when dialog opens
+  const handleDialogOpen = (open: boolean) => {
+    if (open && user) {
+      setTempPresence(user.presence.status)
+      setTempStatusMessage(user.presence.status_message)
+    }
+    setIsStatusDialogOpen(open)
+  }
+
+  const handleUpdateStatus = async () => {
+    if (!user) return
+
+    try {
+      setIsUpdating(true)
+      await updatePresence(tempPresence, tempStatusMessage)
+      setIsStatusDialogOpen(false)
+    } catch (error) {
+      console.error("Failed to update status:", error)
+      // You could add a toast notification here
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+        <Loader2 className="h-4 w-4 animate-spin" />
+      </Button>
+    )
+  }
+
+  if (!user) {
+    return (
+      <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+        <Avatar className="h-10 w-10">
+          <AvatarFallback>?</AvatarFallback>
+        </Avatar>
+      </Button>
+    )
+  }
+
+  const currentPresence = presenceOptions.find((p) => p.value === user.presence.status) || presenceOptions[0]
+  const PresenceIcon = currentPresence.icon
+
+  // Generate initials from name
+  const initials = user.display_name
+    ? user.display_name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : user.email.slice(0, 2).toUpperCase()
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarImage src="/placeholder.svg?height=40&width=40" alt="John Doe" />
-            <AvatarFallback>JD</AvatarFallback>
+            <AvatarImage src={user.profile_picture_url || "/placeholder.svg"} alt={user.display_name} />
+            <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
           <div
             className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-background ${
-              presence === "available"
+              user.presence.status === "available"
                 ? "bg-green-500"
-                : presence === "busy"
+                : user.presence.status === "busy"
                   ? "bg-red-500"
-                  : presence === "away"
+                  : user.presence.status === "away"
                     ? "bg-yellow-500"
-                    : presence === "dnd"
+                    : user.presence.status === "dnd"
                       ? "bg-red-600"
                       : "bg-gray-400"
             }`}
@@ -67,12 +122,15 @@ export function ProfileDropdown() {
           <div className="flex flex-col space-y-2">
             <div className="flex items-center space-x-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="/placeholder.svg?height=32&width=32" alt="John Doe" />
-                <AvatarFallback>JD</AvatarFallback>
+                <AvatarImage src={user.profile_picture_url || "/placeholder.svg"} alt={user.display_name} />
+                <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
-                <p className="text-sm font-medium leading-none">John Doe</p>
-                <p className="text-xs leading-none text-muted-foreground">john.doe@company.com</p>
+                <p className="text-sm font-medium leading-none">{user.display_name}</p>
+                <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                {user.phone?.extension_number && (
+                  <p className="text-xs leading-none text-muted-foreground">Ext. {user.phone.extension_number}</p>
+                )}
               </div>
             </div>
 
@@ -80,10 +138,10 @@ export function ProfileDropdown() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <PresenceIcon className={`h-3 w-3 ${currentPresence?.color}`} />
-                  <span className="text-sm">{currentPresence?.label}</span>
+                  <PresenceIcon className={`h-3 w-3 ${currentPresence.color}`} />
+                  <span className="text-sm">{currentPresence.label}</span>
                 </div>
-                <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+                <Dialog open={isStatusDialogOpen} onOpenChange={handleDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-6 px-2">
                       <Edit className="h-3 w-3" />
@@ -97,7 +155,7 @@ export function ProfileDropdown() {
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="presence">Presence Status</Label>
-                        <Select value={presence} onValueChange={setPresence}>
+                        <Select value={tempPresence} onValueChange={setTempPresence}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -121,20 +179,29 @@ export function ProfileDropdown() {
                         <Textarea
                           id="status-message"
                           placeholder="What's your status?"
-                          value={statusMessage}
-                          onChange={(e) => setStatusMessage(e.target.value)}
+                          value={tempStatusMessage}
+                          onChange={(e) => setTempStatusMessage(e.target.value)}
                           className="resize-none"
                           rows={3}
                         />
                       </div>
-                      <Button onClick={() => setIsStatusDialogOpen(false)} className="w-full">
-                        Update Status
+                      <Button onClick={handleUpdateStatus} className="w-full" disabled={isUpdating}>
+                        {isUpdating ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Updating...
+                          </>
+                        ) : (
+                          "Update Status"
+                        )}
                       </Button>
                     </div>
                   </DialogContent>
                 </Dialog>
               </div>
-              {statusMessage && <p className="text-xs text-muted-foreground">{statusMessage}</p>}
+              {user.presence.status_message && (
+                <p className="text-xs text-muted-foreground">{user.presence.status_message}</p>
+              )}
             </div>
           </div>
         </DropdownMenuLabel>
