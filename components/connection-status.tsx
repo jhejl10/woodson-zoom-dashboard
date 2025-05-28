@@ -1,25 +1,57 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-import { Wifi, WifiOff } from "lucide-react"
+import { Wifi, WifiOff, Loader2 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-export function ConnectionStatus() {
-  // For now, hardcode to true to avoid connection errors
-  // This will be replaced with real WebSocket connection status when implemented
-  const isConnected = true
+interface ConnectionStatusProps {
+  dataLoaded?: boolean
+  enabled?: boolean
+}
+
+export function ConnectionStatus({ dataLoaded = false, enabled = false }: ConnectionStatusProps) {
+  // Show different states based on data loading and WebSocket enablement
+  const getStatus = () => {
+    if (!dataLoaded) {
+      return {
+        variant: "secondary" as const,
+        icon: <Loader2 className="h-3 w-3 animate-spin" />,
+        text: "Loading",
+        tooltip: "Loading initial data...",
+      }
+    }
+
+    if (!enabled) {
+      return {
+        variant: "outline" as const,
+        icon: <WifiOff className="h-3 w-3" />,
+        text: "Disabled",
+        tooltip: "Real-time events are disabled",
+      }
+    }
+
+    // When enabled and data is loaded, show connected (for now)
+    return {
+      variant: "default" as const,
+      icon: <Wifi className="h-3 w-3" />,
+      text: "Ready",
+      tooltip: "Ready for real-time events",
+    }
+  }
+
+  const status = getStatus()
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge variant={isConnected ? "default" : "destructive"} className="flex items-center gap-1 cursor-help">
-            {isConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-            {isConnected ? "Connected" : "Disconnected"}
+          <Badge variant={status.variant} className="flex items-center gap-1 cursor-help">
+            {status.icon}
+            {status.text}
           </Badge>
         </TooltipTrigger>
         <TooltipContent>
-          <p>{isConnected ? "Real-time events are working" : "Real-time events are not available"}</p>
+          <p>{status.tooltip}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

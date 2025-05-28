@@ -208,6 +208,8 @@ function renderActiveView(activeTab: string) {
 export function ZoomPhoneDashboard() {
   const [activeTab, setActiveTab] = useState("users")
   const [phoneAccess, setPhoneAccess] = useState<{ hasAccess: boolean; error: string | null } | null>(null)
+  const [dataLoaded, setDataLoaded] = useState(false)
+  const [realTimeEnabled, setRealTimeEnabled] = useState(false)
 
   // Initialize error handlers
   useErrorHandlers()
@@ -218,9 +220,22 @@ export function ZoomPhoneDashboard() {
         const response = await fetch("/api/zoom/check-phone-access")
         const data = await response.json()
         setPhoneAccess(data)
+
+        // Mark data as loaded after initial check
+        setDataLoaded(true)
+
+        // Enable real-time features only after data is loaded and access is confirmed
+        if (data.hasAccess) {
+          // Delay enabling real-time features to ensure all components are ready
+          setTimeout(() => {
+            console.log("Enabling real-time features...")
+            setRealTimeEnabled(true)
+          }, 2000) // 2 second delay
+        }
       } catch (error) {
         console.error("Error checking phone access:", error)
         setPhoneAccess({ hasAccess: false, error: "Failed to check phone access" })
+        setDataLoaded(true) // Still mark as loaded even if there's an error
       }
     }
     checkAccess()
@@ -290,7 +305,7 @@ export function ZoomPhoneDashboard() {
               <h1 className="text-lg font-semibold">{getPageTitle(activeTab)}</h1>
             </div>
             <div className="ml-auto flex items-center gap-2 px-4">
-              <ConnectionStatus />
+              <ConnectionStatus dataLoaded={dataLoaded} enabled={realTimeEnabled} />
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search..." className="pl-8 w-64" />
@@ -307,8 +322,8 @@ export function ZoomPhoneDashboard() {
         </SidebarInset>
         <SmartCallDock />
 
-        {/* Add real-time notifications */}
-        <RealTimeNotifications />
+        {/* Add real-time notifications - only enabled after data is loaded */}
+        <RealTimeNotifications enabled={realTimeEnabled} dataLoaded={dataLoaded} />
         <Toaster position="top-right" />
       </SidebarProvider>
     </SafeErrorBoundary>
