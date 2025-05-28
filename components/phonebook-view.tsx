@@ -19,62 +19,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Phone, MessageSquare, Plus, Search, Edit, Building, User, Filter } from "lucide-react"
 
-const phonebookEntries = [
-  {
-    id: 1,
-    name: "Dr. Sarah Wilson",
-    company: "Wilson Medical Center",
-    numbers: [
-      { type: "office", number: "+1 (555) 123-4567", isPrimary: true },
-      { type: "mobile", number: "+1 (555) 123-4568", isPrimary: false },
-    ],
-    email: "sarah.wilson@wilsonmedical.com",
-    notes: "Primary care physician, available Mon-Fri 9-5",
-    category: "Medical",
-    avatar: "/placeholder.svg?height=32&width=32",
-  },
-  {
-    id: 2,
-    name: "TechCorp Support",
-    company: "TechCorp Solutions",
-    numbers: [
-      { type: "support", number: "+1 (555) 987-6543", isPrimary: true },
-      { type: "sales", number: "+1 (555) 987-6544", isPrimary: false },
-    ],
-    email: "support@techcorp.com",
-    notes: "24/7 technical support, reference ticket #TC-2024",
-    category: "Business",
-    avatar: null,
-  },
-  {
-    id: 3,
-    name: "Mike's Pizza",
-    company: "Mike's Pizza Palace",
-    numbers: [{ type: "main", number: "+1 (555) 456-7890", isPrimary: true }],
-    email: null,
-    notes: "Delivery until 11 PM, ask for Mike for catering orders",
-    category: "Personal",
-    avatar: null,
-  },
-  {
-    id: 4,
-    name: "Jennifer Martinez",
-    company: "ABC Legal Services",
-    numbers: [
-      { type: "office", number: "+1 (555) 234-5678", isPrimary: true },
-      { type: "direct", number: "+1 (555) 234-5679", isPrimary: false },
-    ],
-    email: "j.martinez@abclegal.com",
-    notes: "Corporate attorney, specializes in contract law",
-    category: "Legal",
-    avatar: "/placeholder.svg?height=32&width=32",
-  },
-]
+// REMOVE MOCK DATA
+// const phonebookEntries = [...]
 
 const categories = ["All", "Medical", "Business", "Personal", "Legal", "Emergency"]
 
-function PhonebookEntry({ entry }: { entry: (typeof phonebookEntries)[0] }) {
-  const primaryNumber = entry.numbers.find((n) => n.isPrimary) || entry.numbers[0]
+function PhonebookEntry({ entry }: { entry: any }) {
+  const primaryNumber = entry.numbers?.find((n: any) => n.isPrimary) || entry.numbers?.[0]
 
   return (
     <div className="flex items-center space-x-4 p-4 hover:bg-muted/50 rounded-lg">
@@ -86,7 +37,7 @@ function PhonebookEntry({ entry }: { entry: (typeof phonebookEntries)[0] }) {
           ) : (
             entry.name
               .split(" ")
-              .map((n) => n[0])
+              .map((n: string) => n[0])
               .join("")
           )}
         </AvatarFallback>
@@ -101,8 +52,8 @@ function PhonebookEntry({ entry }: { entry: (typeof phonebookEntries)[0] }) {
         </div>
         <p className="text-xs text-muted-foreground truncate">{entry.company}</p>
         <div className="flex items-center gap-2 mt-1">
-          <p className="text-xs text-muted-foreground">{primaryNumber.number}</p>
-          {entry.numbers.length > 1 && (
+          <p className="text-xs text-muted-foreground">{primaryNumber?.number}</p>
+          {entry.numbers?.length > 1 && (
             <Badge variant="secondary" className="text-xs">
               +{entry.numbers.length - 1} more
             </Badge>
@@ -207,12 +158,17 @@ function AddEntryDialog() {
 export function PhonebookView() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
+  const [phonebookEntries, setPhonebookEntries] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const filteredEntries = phonebookEntries.filter((entry) => {
+  // TODO: Replace with real API call when available
+  // For now, show empty state
+
+  const filteredEntries = phonebookEntries.filter((entry: any) => {
     const matchesSearch =
-      entry.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      entry.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       entry.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.numbers.some((n) => n.number.includes(searchTerm)) ||
+      entry.numbers?.some((n: any) => n.number.includes(searchTerm)) ||
       entry.notes?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesCategory = selectedCategory === "All" || entry.category === selectedCategory
@@ -256,7 +212,9 @@ export function PhonebookView() {
             <Building className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{phonebookEntries.filter((e) => e.category === "Business").length}</div>
+            <div className="text-2xl font-bold">
+              {phonebookEntries.filter((e: any) => e.category === "Business").length}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -265,7 +223,9 @@ export function PhonebookView() {
             <User className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{phonebookEntries.filter((e) => e.category === "Personal").length}</div>
+            <div className="text-2xl font-bold">
+              {phonebookEntries.filter((e: any) => e.category === "Personal").length}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -307,14 +267,19 @@ export function PhonebookView() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="space-y-1">
-            {filteredEntries.map((entry) => (
-              <PhonebookEntry key={entry.id} entry={entry} />
-            ))}
-          </div>
-          {filteredEntries.length === 0 && (
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">Loading phonebook entries...</div>
+          ) : filteredEntries.length > 0 ? (
+            <div className="space-y-1">
+              {filteredEntries.map((entry: any) => (
+                <PhonebookEntry key={entry.id} entry={entry} />
+              ))}
+            </div>
+          ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No contacts found matching your search criteria
+              {phonebookEntries.length === 0
+                ? "No contacts in your phonebook yet. Add your first contact to get started."
+                : "No contacts found matching your search criteria"}
             </div>
           )}
         </CardContent>

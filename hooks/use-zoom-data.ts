@@ -1,186 +1,184 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { isDevMode } from "@/lib/dev-mode"
-import { mockUsers, mockQueues, mockCalls, mockVoicemails, mockRecordings } from "@/lib/mock-data"
+import { useState, useEffect, useCallback } from "react"
 
-export function useZoomUsers() {
-  const [users, setUsers] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (isDevMode()) {
-      // Use mock data in development/preview
-      setTimeout(() => {
-        setUsers(mockUsers)
-        setLoading(false)
-      }, 1000) // Simulate loading delay
-      return
-    }
-
-    // Rest of the existing fetch logic...
-    const fetchData = async () => {
-      try {
-        const response = await fetch("/api/zoom/users")
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        const data = await response.json()
-        setUsers(data)
-      } catch (e: any) {
-        setError(e.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [])
-
-  return { users, loading, error, refetch: () => {} }
+interface UseZoomDataOptions {
+  refreshInterval?: number
+  enabled?: boolean
 }
 
-export function useZoomQueues() {
-  const [queues, setQueues] = useState<any[]>([])
+export function useZoomUsers(options: UseZoomDataOptions = {}) {
+  const { refreshInterval = 30000, enabled = true } = options
+  const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const fetchUsers = useCallback(async () => {
+    if (!enabled) return
+
+    try {
+      const response = await fetch("/api/phone/users")
+      if (!response.ok) throw new Error("Failed to fetch users")
+
+      const data = await response.json()
+      setUsers(data.users || data)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error")
+    } finally {
+      setLoading(false)
+    }
+  }, [enabled])
+
   useEffect(() => {
-    if (isDevMode()) {
-      // Use mock data in development/preview
-      setTimeout(() => {
-        setQueues(mockQueues)
-        setLoading(false)
-      }, 1000) // Simulate loading delay
-      return
+    fetchUsers()
+
+    if (refreshInterval > 0) {
+      const interval = setInterval(fetchUsers, refreshInterval)
+      return () => clearInterval(interval)
     }
+  }, [fetchUsers, refreshInterval])
 
-    const fetchData = async () => {
-      try {
-        const response = await fetch("/api/zoom/queues")
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        const data = await response.json()
-        setQueues(data)
-      } catch (e: any) {
-        setError(e.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [])
-
-  return { queues, loading, error, refetch: () => {} }
+  return { users, loading, error, refetch: fetchUsers }
 }
 
-export function useZoomCalls() {
-  const [calls, setCalls] = useState<any[]>([])
+export function useZoomCalls(type: "history" | "active" = "history", options: UseZoomDataOptions = {}) {
+  const { refreshInterval = 10000, enabled = true } = options
+  const [calls, setCalls] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const fetchCalls = useCallback(async () => {
+    if (!enabled) return
+
+    try {
+      const response = await fetch(`/api/phone/calls?type=${type}`)
+      if (!response.ok) throw new Error("Failed to fetch calls")
+
+      const data = await response.json()
+      setCalls(data.calls || data)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error")
+    } finally {
+      setLoading(false)
+    }
+  }, [type, enabled])
+
   useEffect(() => {
-    if (isDevMode()) {
-      // Use mock data in development/preview
-      setTimeout(() => {
-        setCalls(mockCalls)
-        setLoading(false)
-      }, 1000) // Simulate loading delay
-      return
+    fetchCalls()
+
+    if (refreshInterval > 0) {
+      const interval = setInterval(fetchCalls, refreshInterval)
+      return () => clearInterval(interval)
     }
+  }, [fetchCalls, refreshInterval])
 
-    const fetchData = async () => {
-      try {
-        const response = await fetch("/api/zoom/calls")
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        const data = await response.json()
-        setCalls(data)
-      } catch (e: any) {
-        setError(e.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [])
-
-  return { calls, loading, error, refetch: () => {} }
+  return { calls, loading, error, refetch: fetchCalls }
 }
 
-export function useZoomVoicemails() {
-  const [voicemails, setVoicemails] = useState<any[]>([])
+export function useZoomQueues(options: UseZoomDataOptions = {}) {
+  const { refreshInterval = 15000, enabled = true } = options
+  const [queues, setQueues] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const fetchQueues = useCallback(async () => {
+    if (!enabled) return
+
+    try {
+      const response = await fetch("/api/phone/queues")
+      if (!response.ok) throw new Error("Failed to fetch queues")
+
+      const data = await response.json()
+      setQueues(data.queues || data)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error")
+    } finally {
+      setLoading(false)
+    }
+  }, [enabled])
+
   useEffect(() => {
-    if (isDevMode()) {
-      // Use mock data in development/preview
-      setTimeout(() => {
-        setVoicemails(mockVoicemails)
-        setLoading(false)
-      }, 1000) // Simulate loading delay
-      return
+    fetchQueues()
+
+    if (refreshInterval > 0) {
+      const interval = setInterval(fetchQueues, refreshInterval)
+      return () => clearInterval(interval)
     }
+  }, [fetchQueues, refreshInterval])
 
-    const fetchData = async () => {
-      try {
-        const response = await fetch("/api/zoom/voicemails")
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        const data = await response.json()
-        setVoicemails(data)
-      } catch (e: any) {
-        setError(e.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [])
-
-  return { voicemails, loading, error, refetch: () => {} }
+  return { queues, loading, error, refetch: fetchQueues }
 }
 
-export function useZoomRecordings() {
-  const [recordings, setRecordings] = useState<any[]>([])
+export function useZoomVoicemails(userId?: string, options: UseZoomDataOptions = {}) {
+  const { refreshInterval = 30000, enabled = true } = options
+  const [voicemails, setVoicemails] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const fetchVoicemails = useCallback(async () => {
+    if (!enabled) return
+
+    try {
+      const url = userId ? `/api/phone/voicemails?user_id=${userId}` : "/api/phone/voicemails"
+      const response = await fetch(url)
+      if (!response.ok) throw new Error("Failed to fetch voicemails")
+
+      const data = await response.json()
+      setVoicemails(data.voicemails || data)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error")
+    } finally {
+      setLoading(false)
+    }
+  }, [userId, enabled])
+
   useEffect(() => {
-    if (isDevMode()) {
-      // Use mock data in development/preview
-      setTimeout(() => {
-        setRecordings(mockRecordings)
-        setLoading(false)
-      }, 1000) // Simulate loading delay
-      return
+    fetchVoicemails()
+
+    if (refreshInterval > 0) {
+      const interval = setInterval(fetchVoicemails, refreshInterval)
+      return () => clearInterval(interval)
     }
+  }, [fetchVoicemails, refreshInterval])
 
-    const fetchData = async () => {
-      try {
-        const response = await fetch("/api/zoom/recordings")
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        const data = await response.json()
-        setRecordings(data)
-      } catch (e: any) {
-        setError(e.message)
-      } finally {
-        setLoading(false)
-      }
+  return { voicemails, loading, error, refetch: fetchVoicemails }
+}
+
+export function useZoomRecordings(options: UseZoomDataOptions = {}) {
+  const { refreshInterval = 30000, enabled = true } = options
+  const [recordings, setRecordings] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchRecordings = useCallback(async () => {
+    if (!enabled) return
+
+    try {
+      const response = await fetch("/api/phone/recordings")
+      if (!response.ok) throw new Error("Failed to fetch recordings")
+
+      const data = await response.json()
+      setRecordings(data.recordings || data)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error")
+    } finally {
+      setLoading(false)
     }
+  }, [enabled])
 
-    fetchData()
-  }, [])
+  useEffect(() => {
+    fetchRecordings()
 
-  return { recordings, loading, error, refetch: () => {} }
+    if (refreshInterval > 0) {
+      const interval = setInterval(fetchRecordings, refreshInterval)
+      return () => clearInterval(interval)
+    }
+  }, [fetchRecordings, refreshInterval])
+
+  return { recordings, loading, error, refetch: fetchRecordings }
 }

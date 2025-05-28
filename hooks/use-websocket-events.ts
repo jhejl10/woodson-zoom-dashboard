@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
-import { getWebSocketClient, type CallEvent, type PresenceEvent, type QueueEvent } from "@/lib/websocket-client"
+import { useEffect, useState } from "react"
+import { getWebSocketClient } from "@/lib/websocket-client"
 
 export function useWebSocketConnection() {
   const [isConnected, setIsConnected] = useState(false)
@@ -41,58 +41,28 @@ export function useWebSocketConnection() {
 }
 
 export function useCallEvents() {
-  const [recentCallEvents, setRecentCallEvents] = useState<CallEvent[]>([])
+  const [recentCallEvents, setRecentCallEvents] = useState<any[]>([])
+  const [isConnected, setIsConnected] = useState(false)
 
-  const handleCallEvent = useCallback((event: CallEvent) => {
-    setRecentCallEvents((prev) => [event, ...prev.slice(0, 9)]) // Keep last 10 events
-  }, [])
-
-  useEffect(() => {
-    const wsClient = getWebSocketClient()
-    wsClient.on("call_event", handleCallEvent)
-
-    return () => {
-      wsClient.off("call_event", handleCallEvent)
-    }
-  }, [handleCallEvent])
-
-  return { recentCallEvents }
+  // For now, we'll just return an empty array
+  // This will be replaced with real WebSocket events when implemented
+  return { recentCallEvents: [], isConnected: false }
 }
 
 export function usePresenceEvents() {
-  const [presenceUpdates, setPresenceUpdates] = useState<Map<string, PresenceEvent>>(new Map())
+  const [presenceEvents, setPresenceEvents] = useState<any[]>([])
+  const [isConnected, setIsConnected] = useState(false)
 
-  const handlePresenceEvent = useCallback((event: PresenceEvent) => {
-    setPresenceUpdates((prev) => new Map(prev.set(event.user_id, event)))
-  }, [])
-
-  useEffect(() => {
-    const wsClient = getWebSocketClient()
-    wsClient.on("presence_event", handlePresenceEvent)
-
-    return () => {
-      wsClient.off("presence_event", handlePresenceEvent)
-    }
-  }, [handlePresenceEvent])
-
-  return { presenceUpdates }
+  // For now, we'll just return an empty array
+  // This will be replaced with real WebSocket events when implemented
+  return { presenceEvents: [], isConnected: false }
 }
 
 export function useQueueEvents() {
-  const [queueUpdates, setQueueUpdates] = useState<Map<string, QueueEvent>>(new Map())
+  const [queueEvents, setQueueEvents] = useState<any[]>([])
+  const [isConnected, setIsConnected] = useState(false)
 
-  const handleQueueEvent = useCallback((event: QueueEvent) => {
-    setQueueUpdates((prev) => new Map(prev.set(event.queue_id, event)))
-  }, [])
-
-  useEffect(() => {
-    const wsClient = getWebSocketClient()
-    wsClient.on("queue_event", handleQueueEvent)
-
-    return () => {
-      wsClient.off("queue_event", handleQueueEvent)
-    }
-  }, [handleQueueEvent])
-
-  return { queueUpdates }
+  // For now, we'll just return an empty array
+  // This will be replaced with real WebSocket events when implemented
+  return { queueEvents: [], isConnected: false }
 }

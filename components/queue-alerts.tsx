@@ -1,60 +1,66 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { AlertTriangle, Users, Clock } from "lucide-react"
-import { useQueueEvents } from "@/hooks/use-websocket-events"
+import { AlertCircle, X } from "lucide-react"
+import { useZoomQueues } from "@/hooks/use-zoom-data"
 
 export function QueueAlerts() {
-  const { queueUpdates } = useQueueEvents()
-  const [urgentQueues, setUrgentQueues] = useState<any[]>([])
+  const [alerts, setAlerts] = useState<any[]>([])
+  const { queues, loading } = useZoomQueues()
 
   useEffect(() => {
-    const urgent = Array.from(queueUpdates.values()).filter(
-      (queue) => queue.waiting_calls > 3 || queue.longest_wait_time > 300, // 5 minutes
-    )
-    setUrgentQueues(urgent)
-  }, [queueUpdates])
+    if (!loading && queues) {
+      // Find queues with high wait times or many waiting calls
+      const urgentQueues = queues.filter((queue: any) => {
+        const waitingCalls = queue.waiting_calls || 0
+        const longestWaitTime = queue.longest_wait_time || "0:00"
+        const [minutes] = longestWaitTime.split(":").map(Number)
 
-  if (urgentQueues.length === 0) {
-    return null
+        return waitingCalls > 2 || minutes > 3
+      })
+
+      if (urgentQueues.length > 0) {
+        setAlerts(
+          urgentQueues.map((queue: any) => ({
+            id: queue.id,
+            title: `${queue.name} needs attention`,
+            description: `${queue.waiting_calls} calls waiting, longest wait: ${queue.longest_wait_time}`,
+            queue: queue,
+          })),
+        )
+      } else {
+        setAlerts([])
+      }
+    }
+  }, [queues, loading])
+
+  const dismissAlert = (alertId: string) => {
+    setAlerts((current) => current.filter((alert) => alert.id !== alertId))
   }
 
+  if (alerts.length === 0) return null
+
   return (
-    <Card className="border-orange-200 bg-orange-50/50">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2 text-orange-800">
-          <AlertTriangle className="h-4 w-4" />
-          Queue Alerts
-          <Badge variant="destructive" className="text-xs">
-            {urgentQueues.length}
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {urgentQueues.map((queue) => (
-          <div key={queue.queue_id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
-            <div className="space-y-1">
-              <p className="text-sm font-medium">{queue.queue_name}</p>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Users className="h-3 w-3" />
-                  {queue.waiting_calls} waiting
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {Math.floor(queue.longest_wait_time / 60)}m longest wait
-                </span>
-              </div>
-            </div>
+    <div className="space-y-2">
+      {alerts.map((alert) => (
+        <Alert key={alert.id} variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <div className="flex-1">
+            <AlertTitle>{alert.title}</AlertTitle>
+            <AlertDescription>{alert.description}</AlertDescription>
+          </div>
+          <div className="flex items-center gap-2">
             <Button size="sm" variant="outline">
               View Queue
             </Button>
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => dismissAlert(alert.id)}>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-        ))}
-      </CardContent>
-    </Card>
+        </Alert>
+      ))}
+    </div>
   )
 }

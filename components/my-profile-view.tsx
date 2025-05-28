@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PhoneIncoming, PhoneOutgoing, Phone, Voicemail, Volume2, Download } from "lucide-react"
 import { useZoomCalls, useZoomVoicemails } from "@/hooks/use-zoom-data"
 
+// REMOVED ALL MOCK DATA
+
 export function MyProfileView() {
   const [activeTab, setActiveTab] = useState("calls")
 
@@ -83,7 +85,7 @@ export function MyProfileView() {
                     </div>
                   ))}
                 </div>
-              ) : (
+              ) : callHistory.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -127,6 +129,8 @@ export function MyProfileView() {
                     })}
                   </TableBody>
                 </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">No call history available</div>
               )}
             </CardContent>
           </Card>
@@ -152,7 +156,7 @@ export function MyProfileView() {
                     </div>
                   ))}
                 </div>
-              ) : (
+              ) : voicemails.length > 0 ? (
                 <div className="space-y-4">
                   {voicemails.map((voicemail: any) => (
                     <div key={voicemail.id} className="flex items-start space-x-4 p-4 border rounded-lg">
@@ -193,6 +197,8 @@ export function MyProfileView() {
                     </div>
                   ))}
                 </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">No voicemails available</div>
               )}
             </CardContent>
           </Card>

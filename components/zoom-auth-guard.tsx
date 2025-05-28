@@ -5,7 +5,6 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Phone, Loader2, Settings } from "lucide-react"
-import { isDevMode } from "@/lib/dev-mode"
 
 interface ZoomAuthGuardProps {
   children: React.ReactNode
@@ -18,14 +17,6 @@ export function ZoomAuthGuard({ children }: ZoomAuthGuardProps) {
   const [authType, setAuthType] = useState<string | null>(null)
 
   useEffect(() => {
-    if (isDevMode()) {
-      // Skip auth in development/preview mode
-      setIsAuthenticated(true)
-      setAuthType("mock")
-      setIsLoading(false)
-      return
-    }
-
     checkAuthStatus()
   }, [])
 
