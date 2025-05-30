@@ -23,9 +23,11 @@ import {
   SortAsc,
   Users,
   RefreshCw,
+  Info,
 } from "lucide-react"
 import { UserDetailsDialog } from "./user-details-dialog"
 import { useCurrentUser } from "@/hooks/use-current-user"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 function getPresenceIcon(presence: string) {
   switch (presence) {
@@ -99,6 +101,30 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
                   {user?.extension || user?.extension_number || "N/A"}
                 </Badge>
               </div>
+
+              {/* DEBUG: Show IDs */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={(e) => e.stopPropagation()}>
+                      <Info className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="text-xs">
+                    <div className="space-y-1">
+                      <div>
+                        <strong>ID:</strong> {user?.id || "N/A"}
+                      </div>
+                      <div>
+                        <strong>Phone User ID:</strong> {user?.phone_user_id || "N/A"}
+                      </div>
+                      <div>
+                        <strong>Type:</strong> {user?.type || "N/A"}
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
 
             {/* 3rd Row - Status Message and Call Icon */}
@@ -150,6 +176,7 @@ export function UsersView() {
   const [commonAreas, setCommonAreas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<string>("")
 
   // Get current user to determine their site
   const { user: currentUser } = useCurrentUser()
@@ -166,16 +193,23 @@ export function UsersView() {
       // Fetch both users and common areas in parallel
       const [usersResponse, commonAreasResponse] = await Promise.allSettled([
         fetch(`/api/phone/users${refreshParam}`).then((res) => res.json()),
-        fetch(`/api/phone/common-areas${refreshParam}`).then((res) => res.json()),
+        fetch(`/phone/common-areas${refreshParam}`).then((res) => res.json()),
       ])
 
       // Handle users response
       if (usersResponse.status === "fulfilled" && !usersResponse.value.error) {
         console.log("Users API response:", usersResponse.value)
         setUsers(Array.isArray(usersResponse.value.users) ? usersResponse.value.users : [])
+
+        // Debug info
+        if (usersResponse.value.users && usersResponse.value.users.length > 0) {
+          const firstUser = usersResponse.value.users[0]
+          setDebugInfo((prev) => prev + `\nFirst user: id=${firstUser.id}, phone_user_id=${firstUser.phone_user_id}`)
+        }
       } else {
         console.error("Error fetching users:", usersResponse)
         setUsers([])
+        setDebugInfo((prev) => prev + `\nError fetching users: ${JSON.stringify(usersResponse)}`)
       }
 
       // Handle common areas response
@@ -184,13 +218,24 @@ export function UsersView() {
         setCommonAreas(
           Array.isArray(commonAreasResponse.value.common_areas) ? commonAreasResponse.value.common_areas : [],
         )
+
+        // Debug info
+        if (commonAreasResponse.value.common_areas && commonAreasResponse.value.common_areas.length > 0) {
+          const firstCommonArea = commonAreasResponse.value.common_areas[0]
+          setDebugInfo(
+            (prev) =>
+              prev + `\nFirst common area: id=${firstCommonArea.id}, phone_user_id=${firstCommonArea.phone_user_id}`,
+          )
+        }
       } else {
         console.error("Error fetching common areas:", commonAreasResponse)
         setCommonAreas([])
+        setDebugInfo((prev) => prev + `\nError fetching common areas: ${JSON.stringify(commonAreasResponse)}`)
       }
     } catch (err) {
       console.error("Error fetching data:", err)
       setError("Failed to load users and phones")
+      setDebugInfo((prev) => prev + `\nException: ${err}`)
     } finally {
       setLoading(false)
     }
@@ -324,6 +369,9 @@ export function UsersView() {
         <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
           <CardContent className="p-6">
             <p className="text-red-800 dark:text-red-200">Error loading users: {error}</p>
+            <pre className="mt-4 text-xs overflow-auto max-h-40 p-2 bg-gray-100 dark:bg-gray-800 rounded">
+              {debugInfo}
+            </pre>
           </CardContent>
         </Card>
       </div>
@@ -381,6 +429,25 @@ export function UsersView() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Debug Info */}
+      {process.env.NODE_ENV !== "production" && (
+        <Card className="bg-gray-50 dark:bg-gray-900">
+          <CardHeader>
+            <CardTitle className="text-sm">Debug Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xs">
+              <p>Current User Site: {currentUserSite}</p>
+              <p>
+                Users: {users.length}, Common Areas: {commonAreas.length}
+              </p>
+              <p>Combined: {allUsers.length}</p>
+              <pre className="mt-2 overflow-auto max-h-20 p-2 bg-gray-100 dark:bg-gray-800 rounded">{debugInfo}</pre>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Users grouped by site */}
       {loading ? (

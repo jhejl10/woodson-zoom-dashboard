@@ -1,42 +1,28 @@
 import { NextResponse } from "next/server"
-import { isAuthenticated } from "@/lib/zoom-auth"
-import { useServerAuth, makeServerZoomAPIRequest } from "@/lib/zoom-server-auth"
+import { cookies } from "next/headers"
 
 export async function GET() {
-  let isServerAuth = false
   try {
-    isServerAuth = await useServerAuth()
+    // Simple check for authentication - just verify if the zoom_tokens cookie exists
+    const cookieStore = cookies()
+    const zoomTokens = cookieStore.get("zoom_tokens")
 
-    if (isServerAuth) {
-      // Test server-to-server auth
-      try {
-        await makeServerZoomAPIRequest("/users/me")
-        return NextResponse.json({
-          authenticated: true,
-          authType: "server-to-server",
-        })
-      } catch (error) {
-        return NextResponse.json({
-          authenticated: false,
-          authType: "server-to-server",
-          error: "Server auth failed",
-        })
-      }
-    } else {
-      // Use regular OAuth
-      const authenticated = await isAuthenticated()
-      return NextResponse.json({
-        authenticated,
-        authType: "oauth",
-      })
-    }
+    // Return a simple response - don't try to parse or validate the token here
+    return NextResponse.json({
+      authenticated: !!zoomTokens,
+      authType: "oauth",
+    })
   } catch (error) {
+    console.error("Critical error in auth status:", error)
+
+    // Always return a valid JSON response, even on error
     return NextResponse.json(
       {
         authenticated: false,
-        authType: "oauth",
+        authType: "error",
+        error: "Authentication check failed",
       },
-      { status: 500 },
-    )
+      { status: 200 },
+    ) // Force 200 status to prevent client-side errors
   }
 }

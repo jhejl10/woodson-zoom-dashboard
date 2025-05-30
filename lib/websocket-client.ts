@@ -38,12 +38,13 @@ export class ZoomWebSocketClient extends EventEmitter {
   private reconnectDelay = 1000
   private heartbeatInterval: NodeJS.Timeout | null = null
   private isConnecting = false
+  private authToken: string | null = null
 
   constructor() {
     super()
   }
 
-  public connect() {
+  public async connect() {
     if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.CONNECTING)) {
       return
     }
@@ -51,8 +52,13 @@ export class ZoomWebSocketClient extends EventEmitter {
     this.isConnecting = true
 
     try {
-      // Use the correct Zoom WebSocket URL
-      const wsUrl = "wss://ws.zoom.us/ws?subscriptionId=aZmzUONmRUqxJUwIf_kxHg"
+      // Get auth token first
+      if (!this.authToken) {
+        await this.getAuthToken()
+      }
+
+      // Use the correct Zoom WebSocket URL with token
+      const wsUrl = `wss://ws.zoom.us/ws?subscriptionId=aZmzUONmRUqxJUwIf_kxHg&token=${this.authToken || ""}`
 
       console.log("Connecting to Zoom WebSocket:", wsUrl)
       this.ws = new WebSocket(wsUrl)
@@ -64,10 +70,10 @@ export class ZoomWebSocketClient extends EventEmitter {
         this.emit("connected")
         this.startHeartbeat()
 
-        // Send authentication message if needed
+        // Send authentication message
         this.send({
           type: "auth",
-          data: { token: "zoom_access_token" },
+          data: { token: this.authToken },
         })
       }
 
@@ -104,7 +110,34 @@ export class ZoomWebSocketClient extends EventEmitter {
     }
   }
 
+  private async getAuthToken() {
+    try {
+      // Get WebSocket token from our API
+      const response = await fetch("/api/websocket/token")
+      const data = await response.json()
+
+      if (data.token) {
+        console.log("Got WebSocket auth token")
+        this.authToken = data.token
+      } else {
+        console.error("Failed to get WebSocket auth token:", data.error || "Unknown error")
+      }
+    } catch (error) {
+      console.error("Error getting WebSocket auth token:", error)
+    }
+  }
+
   private handleMessage(message: ZoomWebSocketEvent) {
+    // Handle authentication response
+    if (message.module === "build_connection" && !message.success) {
+      console.error("WebSocket authentication failed:", message.content)
+      // Try to reconnect with a new token
+      this.authToken = null
+      this.disconnect()
+      this.scheduleReconnect()
+      return
+    }
+
     switch (message.type) {
       case "call_event":
         const callEvent = message.data as CallEvent
