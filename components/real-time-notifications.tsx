@@ -14,7 +14,9 @@ interface RealTimeNotificationsProps {
 
 export function RealTimeNotifications({ enabled = false, dataLoaded = false }: RealTimeNotificationsProps) {
   // Only enable WebSocket events if both enabled and data is loaded
-  const shouldEnable = enabled && dataLoaded
+  // Always enable WebSocket events - remove the dependency on dataLoaded
+  const shouldEnable = enabled
+
   const [activeIncomingCall, setActiveIncomingCall] = useState<CallEvent | null>(null)
 
   const { recentCallEvents } = useCallEvents(shouldEnable)
@@ -29,6 +31,11 @@ export function RealTimeNotifications({ enabled = false, dataLoaded = false }: R
       shouldEnable,
       recentCallEventsLength: Array.isArray(recentCallEvents) ? recentCallEvents.length : 0,
     })
+
+    // Force enable WebSocket if not already enabled
+    if (enabled && !shouldEnable) {
+      console.log("Force enabling WebSocket events...")
+    }
   }, [enabled, dataLoaded, shouldEnable, recentCallEvents])
 
   // Handle call event notifications - with safety checks

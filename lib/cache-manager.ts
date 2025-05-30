@@ -136,12 +136,21 @@ class ZoomDataCache {
 
   async getCommonAreas(): Promise<any[]> {
     const cached = this.getCache<any[]>("common_areas")
-    if (cached) return cached
+    if (cached) {
+      console.log("Returning cached common areas:", cached.length)
+      return cached
+    }
 
     console.log("Fetching common areas from API...")
-    const commonAreas = await this.queueRequest("common_areas", getCommonAreaPhones)
-    this.setCache("common_areas", commonAreas, this.CACHE_DURATIONS.common_areas)
-    return commonAreas
+    try {
+      const commonAreas = await this.queueRequest("common_areas", getCommonAreaPhones)
+      console.log("Raw common areas from API:", commonAreas)
+      this.setCache("common_areas", commonAreas, this.CACHE_DURATIONS.common_areas)
+      return commonAreas
+    } catch (error) {
+      console.error("Error fetching common areas:", error)
+      return []
+    }
   }
 
   async getSitesData(): Promise<any[]> {

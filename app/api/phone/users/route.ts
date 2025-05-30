@@ -18,40 +18,53 @@ export async function GET(request: Request) {
     }
 
     // Fetch all data from cache (which will fetch from API if not cached)
-    const [phoneUsers, sites, commonAreaPhones] = await Promise.allSettled([
+    const [phoneUsersResult, sitesResult, commonAreaPhonesResult] = await Promise.allSettled([
       cache.getUsers(),
       cache.getSitesData(),
       cache.getCommonAreas(),
     ])
 
     // Extract results with fallbacks
-    const users = phoneUsers.status === "fulfilled" ? phoneUsers.value : []
-    const sitesData = sites.status === "fulfilled" ? sites.value : []
-    const commonAreas = commonAreaPhones.status === "fulfilled" ? commonAreaPhones.value : []
+    const phoneUsers = phoneUsersResult.status === "fulfilled" ? phoneUsersResult.value : []
+    const sites = sitesResult.status === "fulfilled" ? sitesResult.value : []
+    const commonAreaPhones = commonAreaPhonesResult.status === "fulfilled" ? commonAreaPhonesResult.value : []
 
-    console.log("Fetched cached data:")
-    console.log("- Phone users:", Array.isArray(users) ? users.length : "not an array")
-    console.log("- Sites:", Array.isArray(sitesData) ? sitesData.length : "not an array")
-    console.log("- Common area phones:", Array.isArray(commonAreas) ? commonAreas.length : "not an array")
+    console.log("Raw API responses:")
+    console.log("- Phone users:", phoneUsers)
+    console.log("- Sites:", sites)
+    console.log("- Common area phones:", commonAreaPhones)
 
     // Create a site lookup map
     const siteMap = new Map()
-    if (Array.isArray(sitesData)) {
-      sitesData.forEach((site: any) => {
+    if (Array.isArray(sites)) {
+      sites.forEach((site: any) => {
         if (site && site.id) {
           siteMap.set(site.id, site.name || "Unknown Site")
         }
       })
     }
+    console.log("Site map:", Object.fromEntries(siteMap))
 
-    // Process regular users with cached presence data
+    // Process regular users
     const processedUsers: any[] = []
-    if (Array.isArray(users)) {
-      for (const user of users) {
+    if (Array.isArray(phoneUsers)) {
+      for (const user of phoneUsers) {
         try {
           if (!user || typeof user !== "object") {
             console.warn("Invalid user object:", user)
             continue
+          }
+
+          console.log("Processing user:", user)
+
+          // Extract name properly - prioritize first_name + last_name
+          let displayName = "Unknown User"
+          if (user.first_name || user.last_name) {
+            displayName = `${user.first_name || ""} ${user.last_name || ""}`.trim()
+          } else if (user.display_name) {
+            displayName = user.display_name
+          } else if (user.name) {
+            displayName = user.name
           }
 
           // Extract extension number properly
@@ -80,10 +93,12 @@ export async function GET(request: Request) {
 
           // Get cached presence status
           let presence = null
-          let presenceStatus = "unknown"
+          let presenceStatus = "available" // Default to available instead of unknown
           try {
             presence = await cache.getUserPresenceData(user.id)
-            presenceStatus = presence?.status || "unknown"
+            if (presence && presence.status) {
+              presenceStatus = presence.status
+            }
 
             // If user is offline, check if their desk phone is online
             if (presenceStatus === "offline") {
@@ -101,22 +116,18 @@ export async function GET(request: Request) {
             }
           } catch (error) {
             console.log(`Could not fetch presence for user ${user.id}:`, error)
-            presenceStatus = "unknown"
+            presenceStatus = "available" // Default to available
           }
 
           const processedUser = {
             id: user.id,
-            name:
-              `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
-              user.display_name ||
-              user.email ||
-              "Unknown User",
+            name: displayName,
             first_name: user.first_name,
             last_name: user.last_name,
             email: user.email,
             extension: extension,
             phone_number: phoneNumber,
-            site: siteMap.get(user.site_id) || "Unknown Site",
+            site: siteMap.get(user.site_id) || "Main Office", // Better default
             site_id: user.site_id,
             status: user.status || "active",
             presence: presenceStatus,
@@ -129,6 +140,9 @@ export async function GET(request: Request) {
           }
 
           processedUsers.push(processedUser)
+          console.log(
+            `Processed user: ${processedUser.name} - Ext: ${processedUser.extension} - Site: ${processedUser.site}`,
+          )
         } catch (error) {
           console.error("Error processing user:", user, error)
         }
@@ -137,13 +151,15 @@ export async function GET(request: Request) {
 
     // Process common area phones
     const processedCommonAreaPhones: any[] = []
-    if (Array.isArray(commonAreas)) {
-      for (const phone of commonAreas) {
+    if (Array.isArray(commonAreaPhones)) {
+      for (const phone of commonAreaPhones) {
         try {
           if (!phone || typeof phone !== "object") {
             console.warn("Invalid common area phone object:", phone)
             continue
           }
+
+          console.log("Processing common area phone:", phone)
 
           // Extract extension number properly
           let extension = "No extension"
@@ -174,7 +190,7 @@ export async function GET(request: Request) {
             name: phone.name || phone.display_name || `Common Area ${phone.id}`,
             extension: extension,
             phone_number: phoneNumber,
-            site: siteMap.get(phone.site_id) || "Unknown Site",
+            site: siteMap.get(phone.site_id) || "Main Office",
             site_id: phone.site_id,
             status: phone.status || "active",
             presence: "available",
@@ -187,6 +203,9 @@ export async function GET(request: Request) {
           }
 
           processedCommonAreaPhones.push(processedPhone)
+          console.log(
+            `Processed common area: ${processedPhone.name} - Ext: ${processedPhone.extension} - Site: ${processedPhone.site}`,
+          )
         } catch (error) {
           console.error("Error processing common area phone:", phone, error)
         }
@@ -210,11 +229,16 @@ export async function GET(request: Request) {
       cached: true,
       cache_stats: await cache.getCacheStats(),
       debug: {
-        raw_phone_users_count: Array.isArray(users) ? users.length : 0,
-        raw_common_areas_count: Array.isArray(commonAreas) ? commonAreas.length : 0,
-        sites_count: Array.isArray(sitesData) ? sitesData.length : 0,
+        raw_phone_users_count: Array.isArray(phoneUsers) ? phoneUsers.length : 0,
+        raw_common_areas_count: Array.isArray(commonAreaPhones) ? commonAreaPhones.length : 0,
+        sites_count: Array.isArray(sites) ? sites.length : 0,
         sample_user: processedUsers[0] || null,
         sample_common_area: processedCommonAreaPhones[0] || null,
+        raw_samples: {
+          raw_user: phoneUsers[0] || null,
+          raw_common_area: commonAreaPhones[0] || null,
+          raw_site: sites[0] || null,
+        },
       },
     })
   } catch (error) {

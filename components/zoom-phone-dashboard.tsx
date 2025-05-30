@@ -36,6 +36,7 @@ import { RealTimeNotifications } from "./real-time-notifications"
 import { ConnectionStatus } from "./connection-status"
 import { Toaster } from "sonner"
 import { ParkedCallsDisplay } from "./parked-calls-display"
+import { getWebSocketClient } from "../utils/websocket"
 
 const navigationItems = [
   {
@@ -206,14 +207,26 @@ function renderActiveView(activeTab: string) {
   }
 }
 
+// Change from default export to named export
 export function ZoomPhoneDashboard() {
   const [activeTab, setActiveTab] = useState("users")
   const [phoneAccess, setPhoneAccess] = useState<{ hasAccess: boolean; error: string | null } | null>(null)
   const [dataLoaded, setDataLoaded] = useState(false)
-  const [realTimeEnabled, setRealTimeEnabled] = useState(false)
+  const [realTimeEnabled, setRealTimeEnabled] = useState(true) // Always enable real-time features
 
   // Initialize error handlers
   useErrorHandlers()
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    console.log("Initializing WebSocket connection...")
+    const wsClient = getWebSocketClient()
+    wsClient.connect()
+
+    return () => {
+      wsClient.disconnect()
+    }
+  }, [])
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -224,15 +237,6 @@ export function ZoomPhoneDashboard() {
 
         // Mark data as loaded after initial check
         setDataLoaded(true)
-
-        // Enable real-time features only after data is loaded and access is confirmed
-        if (data.hasAccess) {
-          // Delay enabling real-time features to ensure all components are ready
-          setTimeout(() => {
-            console.log("Enabling real-time features...")
-            setRealTimeEnabled(true)
-          }, 2000) // 2 second delay
-        }
       } catch (error) {
         console.error("Error checking phone access:", error)
         setPhoneAccess({ hasAccess: false, error: "Failed to check phone access" })
@@ -323,8 +327,8 @@ export function ZoomPhoneDashboard() {
         </SidebarInset>
         <SmartCallDock />
 
-        {/* Add real-time notifications - only enabled after data is loaded */}
-        <RealTimeNotifications enabled={realTimeEnabled} dataLoaded={dataLoaded} />
+        {/* Add real-time notifications - always enabled */}
+        <RealTimeNotifications enabled={true} dataLoaded={true} />
         <Toaster position="top-right" />
         <ParkedCallsDisplay />
       </SidebarProvider>

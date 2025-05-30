@@ -74,7 +74,9 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
           <div className="flex-1 min-w-0 space-y-1">
             {/* 1st Row - Name and Type */}
             <div className="flex items-center justify-between">
-              <h3 className="font-medium truncate">{user?.name || "Unknown User"}</h3>
+              <h3 className="font-medium truncate">
+                {user?.name && user.name !== "Unknown User" ? user.name : user?.email || "Unknown User"}
+              </h3>
               <div className="flex items-center gap-1">
                 {user?.type === "common_area" ? (
                   <Badge variant="outline" className="text-xs">
@@ -82,8 +84,8 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
                   </Badge>
                 ) : (
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    {getPresenceIcon(user?.presence || "unknown")}
-                    <span>{getPresenceText(user?.presence || "unknown")}</span>
+                    {getPresenceIcon(user?.presence || "available")}
+                    <span>{getPresenceText(user?.presence || "available")}</span>
                   </div>
                 )}
               </div>
