@@ -113,8 +113,16 @@ class ZoomWebSocketClient extends EventEmitter {
         this.emit("call_event", callEvent)
         break
       case "presence_event":
-        console.log("Received presence event:", message.data)
-        this.emit("presence_event", message.data as PresenceEvent)
+        const presenceEvent = message.data as PresenceEvent
+        console.log("Received presence event:", presenceEvent)
+
+        // Update cache via API call (since we can't import server actions in client)
+        this.updatePresenceCache(presenceEvent.user_id, {
+          status: presenceEvent.presence,
+          status_message: presenceEvent.status_message,
+        })
+
+        this.emit("presence_event", presenceEvent)
         break
       case "queue_event":
         this.emit("queue_event", message.data as QueueEvent)
@@ -129,12 +137,43 @@ class ZoomWebSocketClient extends EventEmitter {
         console.log("Received parked call event:", message.data)
         this.emit("parked_call_event", message.data)
         break
+      case "user_updated":
+        // Update user cache via API call
+        if (message.data.user_id) {
+          this.updateUserCache(message.data.user_id, message.data)
+        }
+        this.emit("user_updated", message.data)
+        break
       case "heartbeat":
         // Respond to heartbeat
         this.send({ type: "heartbeat_ack", data: {} })
         break
       default:
         console.log("Unknown message type:", message.type, message)
+    }
+  }
+
+  private async updatePresenceCache(userId: string, presenceData: any) {
+    try {
+      await fetch("/api/cache/update-presence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, presenceData }),
+      })
+    } catch (error) {
+      console.error("Error updating presence cache:", error)
+    }
+  }
+
+  private async updateUserCache(userId: string, userData: any) {
+    try {
+      await fetch("/api/cache/update-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, userData }),
+      })
+    } catch (error) {
+      console.error("Error updating user cache:", error)
     }
   }
 

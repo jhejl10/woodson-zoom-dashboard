@@ -1,41 +1,53 @@
-import { NextResponse } from "next/headers"
-import { getPhoneUsers, getSites, getCommonAreaPhones, getUserPresence, checkDeskPhoneStatus } from "@/lib/zoom-api"
+import { NextResponse } from "next/server"
+import { getZoomCache } from "@/lib/cache-manager"
+import { checkDeskPhoneStatus } from "@/lib/zoom-api"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    console.log("=== FETCHING PHONE USERS START ===")
+    console.log("=== FETCHING PHONE USERS (CACHED) START ===")
 
-    // Fetch all data in parallel with better error handling
-    const [phoneUsersResult, sitesResult, commonAreaPhonesResult] = await Promise.allSettled([
-      getPhoneUsers(),
-      getSites(),
-      getCommonAreaPhones(),
+    const { searchParams } = new URL(request.url)
+    const forceRefresh = searchParams.get("refresh") === "true"
+
+    const cache = await getZoomCache()
+
+    // Force refresh if requested
+    if (forceRefresh) {
+      console.log("Force refresh requested")
+      await cache.forceRefresh("all")
+    }
+
+    // Fetch all data from cache (which will fetch from API if not cached)
+    const [phoneUsers, sites, commonAreaPhones] = await Promise.allSettled([
+      cache.getUsers(),
+      cache.getSitesData(),
+      cache.getCommonAreas(),
     ])
 
     // Extract results with fallbacks
-    const phoneUsers = phoneUsersResult.status === "fulfilled" ? phoneUsersResult.value : []
-    const sites = sitesResult.status === "fulfilled" ? sitesResult.value : []
-    const commonAreaPhones = commonAreaPhonesResult.status === "fulfilled" ? commonAreaPhonesResult.value : []
+    const users = phoneUsers.status === "fulfilled" ? phoneUsers.value : []
+    const sitesData = sites.status === "fulfilled" ? sites.value : []
+    const commonAreas = commonAreaPhones.status === "fulfilled" ? commonAreaPhones.value : []
 
-    console.log("Fetched raw data:")
-    console.log("- Phone users:", Array.isArray(phoneUsers) ? phoneUsers.length : "not an array")
-    console.log("- Sites:", Array.isArray(sites) ? sites.length : "not an array")
-    console.log("- Common area phones:", Array.isArray(commonAreaPhones) ? commonAreaPhones.length : "not an array")
+    console.log("Fetched cached data:")
+    console.log("- Phone users:", Array.isArray(users) ? users.length : "not an array")
+    console.log("- Sites:", Array.isArray(sitesData) ? sitesData.length : "not an array")
+    console.log("- Common area phones:", Array.isArray(commonAreas) ? commonAreas.length : "not an array")
 
     // Create a site lookup map
     const siteMap = new Map()
-    if (Array.isArray(sites)) {
-      sites.forEach((site: any) => {
+    if (Array.isArray(sitesData)) {
+      sitesData.forEach((site: any) => {
         if (site && site.id) {
           siteMap.set(site.id, site.name || "Unknown Site")
         }
       })
     }
 
-    // Process regular users with proper extension extraction
+    // Process regular users with cached presence data
     const processedUsers: any[] = []
-    if (Array.isArray(phoneUsers)) {
-      for (const user of phoneUsers) {
+    if (Array.isArray(users)) {
+      for (const user of users) {
         try {
           if (!user || typeof user !== "object") {
             console.warn("Invalid user object:", user)
@@ -66,24 +78,29 @@ export async function GET() {
             }
           }
 
-          // Try to get presence status
+          // Get cached presence status
           let presence = null
-          let presenceStatus = null
+          let presenceStatus = "unknown"
           try {
-            presence = await getUserPresence(user.id)
+            presence = await cache.getUserPresenceData(user.id)
+            presenceStatus = presence?.status || "unknown"
 
             // If user is offline, check if their desk phone is online
-            if (presence?.status === "offline") {
-              const isDeskPhoneOnline = await checkDeskPhoneStatus(user.id)
-              if (isDeskPhoneOnline) {
-                presence.status = "available"
-                presence.status_message = "Available (Desk Phone)"
+            if (presenceStatus === "offline") {
+              try {
+                const isDeskPhoneOnline = await checkDeskPhoneStatus(user.id)
+                if (isDeskPhoneOnline) {
+                  presenceStatus = "available"
+                  if (presence) {
+                    presence.status_message = "Available (Desk Phone)"
+                  }
+                }
+              } catch (deskPhoneError) {
+                console.log(`Could not check desk phone for user ${user.id}:`, deskPhoneError)
               }
             }
-
-            presenceStatus = presence?.status || "unknown"
           } catch (error) {
-            console.log(`Could not fetch presence for user ${user.id}`)
+            console.log(`Could not fetch presence for user ${user.id}:`, error)
             presenceStatus = "unknown"
           }
 
@@ -112,19 +129,16 @@ export async function GET() {
           }
 
           processedUsers.push(processedUser)
-          console.log(
-            `Processed user: ${processedUser.name} - Ext: ${processedUser.extension} - Site: ${processedUser.site}`,
-          )
         } catch (error) {
           console.error("Error processing user:", user, error)
         }
       }
     }
 
-    // Process common area phones with proper extension extraction
+    // Process common area phones
     const processedCommonAreaPhones: any[] = []
-    if (Array.isArray(commonAreaPhones)) {
-      for (const phone of commonAreaPhones) {
+    if (Array.isArray(commonAreas)) {
+      for (const phone of commonAreas) {
         try {
           if (!phone || typeof phone !== "object") {
             console.warn("Invalid common area phone object:", phone)
@@ -155,7 +169,6 @@ export async function GET() {
             }
           }
 
-          // Common area phones don't have presence status, so we set a default
           const processedPhone = {
             id: phone.id,
             name: phone.name || phone.display_name || `Common Area ${phone.id}`,
@@ -164,7 +177,7 @@ export async function GET() {
             site: siteMap.get(phone.site_id) || "Unknown Site",
             site_id: phone.site_id,
             status: phone.status || "active",
-            presence: "available", // Common area phones are always available
+            presence: "available",
             presence_status: null,
             type: "common_area",
             avatar_url: null,
@@ -174,9 +187,6 @@ export async function GET() {
           }
 
           processedCommonAreaPhones.push(processedPhone)
-          console.log(
-            `Processed common area: ${processedPhone.name} - Ext: ${processedPhone.extension} - Site: ${processedPhone.site}`,
-          )
         } catch (error) {
           console.error("Error processing common area phone:", phone, error)
         }
@@ -190,17 +200,19 @@ export async function GET() {
     console.log("- Processed users:", processedUsers.length)
     console.log("- Processed common area phones:", processedCommonAreaPhones.length)
     console.log("- Total users:", allUsers.length)
-    console.log("=== FETCHING PHONE USERS END ===")
+    console.log("=== FETCHING PHONE USERS (CACHED) END ===")
 
     return NextResponse.json({
       users: allUsers,
       total: allUsers.length,
       regular_users: processedUsers.length,
       common_area_phones: processedCommonAreaPhones.length,
+      cached: true,
+      cache_stats: await cache.getCacheStats(),
       debug: {
-        raw_phone_users_count: Array.isArray(phoneUsers) ? phoneUsers.length : 0,
-        raw_common_areas_count: Array.isArray(commonAreaPhones) ? commonAreaPhones.length : 0,
-        sites_count: Array.isArray(sites) ? sites.length : 0,
+        raw_phone_users_count: Array.isArray(users) ? users.length : 0,
+        raw_common_areas_count: Array.isArray(commonAreas) ? commonAreas.length : 0,
+        sites_count: Array.isArray(sitesData) ? sitesData.length : 0,
         sample_user: processedUsers[0] || null,
         sample_common_area: processedCommonAreaPhones[0] || null,
       },

@@ -39,13 +39,15 @@ export function ProfileDropdown() {
   }, [user])
 
   const handleStatusChange = async (status: string) => {
-    if (!user || status === user.presence.status) return
+    if (!user || status === user.presence?.status) return
 
     try {
       setIsUpdating(true)
+      console.log("Updating status to:", status)
       await updatePresence(status, statusMessage)
     } catch (error) {
       console.error("Failed to update status:", error)
+      // You could add a toast notification here
     } finally {
       setIsUpdating(false)
     }
@@ -56,10 +58,12 @@ export function ProfileDropdown() {
 
     try {
       setIsUpdating(true)
-      await updatePresence(user.presence.status, statusMessage)
+      console.log("Updating status message to:", statusMessage)
+      await updatePresence(user.presence?.status || "available", statusMessage)
       setIsEditingMessage(false)
     } catch (error) {
       console.error("Failed to update status message:", error)
+      // You could add a toast notification here
     } finally {
       setIsUpdating(false)
     }
@@ -92,7 +96,7 @@ export function ProfileDropdown() {
     )
   }
 
-  const currentPresence = presenceOptions.find((p) => p.value === user.presence.status) || presenceOptions[0]
+  const currentPresence = presenceOptions.find((p) => p.value === user.presence?.status) || presenceOptions[0]
   const PresenceIcon = currentPresence.icon
 
   // Generate initials from name
@@ -103,7 +107,7 @@ export function ProfileDropdown() {
         .join("")
         .toUpperCase()
         .slice(0, 2)
-    : user.email.slice(0, 2).toUpperCase()
+    : user.email?.slice(0, 2).toUpperCase() || "?"
 
   return (
     <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
@@ -115,13 +119,13 @@ export function ProfileDropdown() {
           </Avatar>
           <div
             className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-background ${
-              user.presence.status === "available"
+              user.presence?.status === "available"
                 ? "bg-green-500"
-                : user.presence.status === "busy"
+                : user.presence?.status === "busy"
                   ? "bg-red-500"
-                  : user.presence.status === "away"
+                  : user.presence?.status === "away"
                     ? "bg-yellow-500"
-                    : user.presence.status === "dnd"
+                    : user.presence?.status === "dnd"
                       ? "bg-red-600"
                       : "bg-gray-400"
             }`}
@@ -148,7 +152,7 @@ export function ProfileDropdown() {
             {/* Status Section */}
             <div className="space-y-2 pt-2">
               <div className="text-xs font-medium text-muted-foreground">Status</div>
-              <DropdownMenuRadioGroup value={user.presence.status} onValueChange={handleStatusChange}>
+              <DropdownMenuRadioGroup value={user.presence?.status || "available"} onValueChange={handleStatusChange}>
                 {presenceOptions.map((option) => {
                   const Icon = option.icon
                   return (
@@ -160,7 +164,7 @@ export function ProfileDropdown() {
                     >
                       <Icon className={`h-3 w-3 ${option.color}`} />
                       <span>{option.label}</span>
-                      {isUpdating && user.presence.status === option.value && (
+                      {isUpdating && user.presence?.status === option.value && (
                         <Loader2 className="ml-auto h-3 w-3 animate-spin" />
                       )}
                     </DropdownMenuRadioItem>
