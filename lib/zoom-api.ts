@@ -166,7 +166,7 @@ export async function getCurrentUserPhoneProfile() {
   }
 }
 
-// Get current user's presence status
+// Get current user's presence status - USES REGULAR USER ID
 export async function getCurrentUserPresence() {
   try {
     console.log("Fetching current user's presence...")
@@ -183,11 +183,9 @@ export async function getCurrentUserPresence() {
 export async function getPhoneUsers() {
   try {
     console.log("Fetching phone users...")
-    // Corrected endpoint and page size
     const response = await makeZoomPhoneAPIRequest("/users?page_size=100")
     console.log("Phone users API response:", response)
 
-    // Handle the response structure properly
     if (response.users && Array.isArray(response.users)) {
       return response.users
     } else if (Array.isArray(response)) {
@@ -202,31 +200,38 @@ export async function getPhoneUsers() {
   }
 }
 
+// Get user presence - USES REGULAR USER ID (not phone_user_id)
 export async function getUserPresence(userId: string) {
   try {
-    // Correct endpoint for user presence
+    console.log(`Fetching presence for user ID: ${userId}`)
+    // Use regular Zoom API for presence, not phone API
     const response = await makeZoomAPIRequest(`/users/${userId}/presence_status`)
+    console.log(`Presence response for user ${userId}:`, response)
     return response
   } catch (error) {
-    console.error("Error fetching user presence:", error)
+    console.error(`Error fetching user presence for ${userId}:`, error)
     return null
   }
 }
 
+// Update user presence - USES REGULAR USER ID (not phone_user_id)
 export async function updateUserPresence(userId: string, status: string, statusMessage?: string) {
   try {
+    console.log(`Updating presence for user ID: ${userId} to status: ${status}`)
     const body: any = { status }
     if (statusMessage) {
       body.status_message = statusMessage
     }
 
+    // Use regular Zoom API for presence updates, not phone API
     const response = await makeZoomAPIRequest(`/users/${userId}/presence_status`, {
       method: "PATCH",
       body: JSON.stringify(body),
     })
+    console.log(`Presence update response for user ${userId}:`, response)
     return response
   } catch (error) {
-    console.error("Error updating user presence:", error)
+    console.error(`Error updating user presence for ${userId}:`, error)
     throw error
   }
 }
@@ -235,7 +240,6 @@ export async function updateUserPresence(userId: string, status: string, statusM
 export async function getSites() {
   try {
     console.log("Fetching sites...")
-    // Correct endpoint for sites
     const response = await makeZoomPhoneAPIRequest("/sites?page_size=100")
     console.log("Sites API response:", response)
     return Array.isArray(response.sites) ? response.sites : []
@@ -245,15 +249,13 @@ export async function getSites() {
   }
 }
 
-// Common area phones - CORRECT ENDPOINT
+// Common area phones - USES PHONE API
 export async function getCommonAreaPhones() {
   try {
     console.log("Fetching common area phones...")
-    // Correct endpoint for common area phones
     const response = await makeZoomPhoneAPIRequest("/common_areas?page_size=100")
     console.log("Common area phones response:", response)
 
-    // Handle the response structure
     if (response.common_areas && Array.isArray(response.common_areas)) {
       return response.common_areas
     } else if (Array.isArray(response)) {
@@ -268,14 +270,12 @@ export async function getCommonAreaPhones() {
   }
 }
 
-// Get phone devices
+// Get phone devices - USES PHONE API
 export async function getPhoneDevices() {
   try {
     console.log("Fetching phone devices...")
-    // Correct endpoint for phone devices
     const response = await makeZoomPhoneAPIRequest("/devices?page_size=100")
     console.log("Phone devices response:", response)
-
     return Array.isArray(response.devices) ? response.devices : []
   } catch (error) {
     console.error("Error fetching phone devices:", error)
@@ -283,15 +283,14 @@ export async function getPhoneDevices() {
   }
 }
 
-// Check if user's desk phone is online
-export async function checkDeskPhoneStatus(userId: string) {
+// Check if user's desk phone is online - USES PHONE_USER_ID
+export async function checkDeskPhoneStatus(phoneUserId: string) {
   try {
-    console.log(`Checking desk phone status for user ${userId}...`)
-    const response = await makeZoomPhoneAPIRequest(`/users/${userId}/devices?page_size=100`)
-    console.log(`Desk phone status for user ${userId}:`, response)
+    console.log(`Checking desk phone status for phone user ID ${phoneUserId}...`)
+    const response = await makeZoomPhoneAPIRequest(`/users/${phoneUserId}/devices?page_size=100`)
+    console.log(`Desk phone status for phone user ${phoneUserId}:`, response)
 
     if (response.devices && Array.isArray(response.devices)) {
-      // Check if any desk phone is online
       const onlineDevice = response.devices.find(
         (device: any) => device.type === "desk_phone" && device.status === "online",
       )
@@ -299,16 +298,16 @@ export async function checkDeskPhoneStatus(userId: string) {
     }
     return false
   } catch (error) {
-    console.error(`Error checking desk phone status for user ${userId}:`, error)
+    console.error(`Error checking desk phone status for phone user ${phoneUserId}:`, error)
     return false
   }
 }
 
-// Call management functions
-export async function getCallHistory(userId?: string, from?: string, to?: string) {
+// Call management functions - USE PHONE_USER_ID for phone operations
+export async function getCallHistory(phoneUserId?: string, from?: string, to?: string) {
   try {
     const params = new URLSearchParams()
-    if (userId) params.append("user_id", userId)
+    if (phoneUserId) params.append("user_id", phoneUserId) // This should be phone_user_id
     if (from) params.append("from", from)
     if (to) params.append("to", to)
     params.append("page_size", "50")
@@ -321,12 +320,13 @@ export async function getCallHistory(userId?: string, from?: string, to?: string
   }
 }
 
+// Phone operations use phone_user_id
 export async function makeCall(callerId: string, callee: string) {
   try {
     const response = await makeZoomPhoneAPIRequest("/calls", {
       method: "POST",
       body: JSON.stringify({
-        caller_id: callerId,
+        caller_id: callerId, // Should be phone_user_id
         callee: callee,
       }),
     })
@@ -415,11 +415,11 @@ export async function getCallQueueMembers(queueId: string) {
   }
 }
 
-// Voicemail functions
-export async function getVoicemails(userId?: string) {
+// Voicemail functions - USE PHONE_USER_ID
+export async function getVoicemails(phoneUserId?: string) {
   try {
     const params = new URLSearchParams()
-    if (userId) params.append("user_id", userId)
+    if (phoneUserId) params.append("user_id", phoneUserId) // Should be phone_user_id
     params.append("page_size", "50")
 
     const response = await makeZoomPhoneAPIRequest(`/voicemails?${params.toString()}`)
@@ -445,11 +445,11 @@ export async function markVoicemailAsRead(voicemailId: string) {
   }
 }
 
-// SMS functions
-export async function getSMSMessages(userId?: string) {
+// SMS functions - USE PHONE_USER_ID
+export async function getSMSMessages(phoneUserId?: string) {
   try {
     const params = new URLSearchParams()
-    if (userId) params.append("user_id", userId)
+    if (phoneUserId) params.append("user_id", phoneUserId) // Should be phone_user_id
     params.append("page_size", "50")
 
     const response = await makeZoomPhoneAPIRequest(`/sms?${params.toString()}`)
@@ -488,13 +488,15 @@ export async function getActiveCalls() {
   }
 }
 
-export async function getUserPhoneSettings(userId: string) {
+// Get user phone settings - USES PHONE_USER_ID
+export async function getUserPhoneSettings(phoneUserId: string) {
   try {
-    const response = await makeZoomPhoneAPIRequest(`/users/${userId}`)
-    console.log(`Phone settings for user ${userId}:`, response)
+    console.log(`Fetching phone settings for phone user ID: ${phoneUserId}`)
+    const response = await makeZoomPhoneAPIRequest(`/users/${phoneUserId}`)
+    console.log(`Phone settings for phone user ${phoneUserId}:`, response)
     return response
   } catch (error) {
-    console.error(`Error fetching phone settings for user ${userId}:`, error)
+    console.error(`Error fetching phone settings for phone user ${phoneUserId}:`, error)
     return null
   }
 }

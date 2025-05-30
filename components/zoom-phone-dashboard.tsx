@@ -36,7 +36,7 @@ import { RealTimeNotifications } from "./real-time-notifications"
 import { ConnectionStatus } from "./connection-status"
 import { Toaster } from "sonner"
 import { ParkedCallsDisplay } from "./parked-calls-display"
-import { getWebSocketClient } from "../utils/websocket"
+import { getWebSocketClient } from "../lib/websocket-client"
 
 const navigationItems = [
   {
@@ -220,11 +220,20 @@ export function ZoomPhoneDashboard() {
   // Initialize WebSocket connection
   useEffect(() => {
     console.log("Initializing WebSocket connection...")
-    const wsClient = getWebSocketClient()
-    wsClient.connect()
+    try {
+      const wsClient = getWebSocketClient()
+      console.log("WebSocket client obtained:", wsClient)
 
-    return () => {
-      wsClient.disconnect()
+      // Connect the WebSocket
+      wsClient.connect()
+      console.log("WebSocket connection initiated")
+
+      return () => {
+        console.log("Cleaning up WebSocket connection...")
+        wsClient.disconnect()
+      }
+    } catch (error) {
+      console.error("Error initializing WebSocket:", error)
     }
   }, [])
 

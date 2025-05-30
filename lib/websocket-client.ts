@@ -31,7 +31,7 @@ export interface QueueEvent {
   available_agents: number
 }
 
-class ZoomWebSocketClient extends EventEmitter {
+export class ZoomWebSocketClient extends EventEmitter {
   private ws: WebSocket | null = null
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
@@ -41,10 +41,9 @@ class ZoomWebSocketClient extends EventEmitter {
 
   constructor() {
     super()
-    this.connect()
   }
 
-  private connect() {
+  public connect() {
     if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.CONNECTING)) {
       return
     }
@@ -248,3 +247,6 @@ export function disconnectWebSocket() {
     wsClient = null
   }
 }
+
+// Also export the class directly for type checking
+export { ZoomWebSocketClient as WebSocketClient }

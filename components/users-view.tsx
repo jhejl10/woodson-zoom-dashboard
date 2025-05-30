@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -22,9 +22,10 @@ import {
   Minus,
   SortAsc,
   Users,
+  RefreshCw,
 } from "lucide-react"
 import { UserDetailsDialog } from "./user-details-dialog"
-import { useZoomUsers, ultraSafeProcessArray } from "@/hooks/use-zoom-data"
+import { useCurrentUser } from "@/hooks/use-current-user"
 
 function getPresenceIcon(presence: string) {
   switch (presence) {
@@ -39,7 +40,7 @@ function getPresenceIcon(presence: string) {
     case "offline":
       return <Circle className="h-3 w-3 fill-gray-400 text-gray-400" />
     default:
-      return <Circle className="h-3 w-3 fill-gray-500 text-gray-500" />
+      return <Circle className="h-3 w-3 fill-green-500 text-green-500" />
   }
 }
 
@@ -56,12 +57,11 @@ function getPresenceText(presence: string) {
     case "offline":
       return "Offline"
     default:
-      return "Unknown"
+      return "Available"
   }
 }
 
 function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) => void }) {
-  // Safely handle user data
   if (!user || typeof user !== "object") {
     console.warn("UserCard received invalid user:", user)
     return null
@@ -75,7 +75,7 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
             {/* 1st Row - Name and Type */}
             <div className="flex items-center justify-between">
               <h3 className="font-medium truncate">
-                {user?.name && user.name !== "Unknown User" ? user.name : user?.email || "Unknown User"}
+                {user?.name || user?.display_name || user?.email || "Unknown User"}
               </h3>
               <div className="flex items-center gap-1">
                 {user?.type === "common_area" ? (
@@ -96,7 +96,7 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
               <div className="flex items-center gap-1">
                 <span className="text-sm text-muted-foreground">Ext</span>
                 <Badge variant="outline" className="text-xs">
-                  {user?.extension || "N/A"}
+                  {user?.extension || user?.extension_number || "N/A"}
                 </Badge>
               </div>
             </div>
@@ -146,106 +146,138 @@ export function UsersView() {
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [showUserDialog, setShowUserDialog] = useState(false)
   const [sortBy, setSortBy] = useState<"extension" | "name">("extension")
+  const [users, setUsers] = useState<any[]>([])
+  const [commonAreas, setCommonAreas] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Use real Zoom data with enhanced error handling
-  const { users, loading, error, refetch } = useZoomUsers()
+  // Get current user to determine their site
+  const { user: currentUser } = useCurrentUser()
+  const currentUserSite = currentUser?.phone?.site_name || currentUser?.site_name || "Main Office"
 
-  // Mock current user's site - replace with real data when available
-  const currentUserSite = "New York Office"
+  // Fetch users and common areas from cached API
+  const fetchData = async (forceRefresh = false) => {
+    try {
+      setLoading(true)
+      setError(null)
 
-  // Group users by site with ultra-safe processing
+      const refreshParam = forceRefresh ? "?refresh=true" : ""
+
+      // Fetch both users and common areas in parallel
+      const [usersResponse, commonAreasResponse] = await Promise.allSettled([
+        fetch(`/api/phone/users${refreshParam}`).then((res) => res.json()),
+        fetch(`/api/phone/common-areas${refreshParam}`).then((res) => res.json()),
+      ])
+
+      // Handle users response
+      if (usersResponse.status === "fulfilled" && !usersResponse.value.error) {
+        console.log("Users API response:", usersResponse.value)
+        setUsers(Array.isArray(usersResponse.value.users) ? usersResponse.value.users : [])
+      } else {
+        console.error("Error fetching users:", usersResponse)
+        setUsers([])
+      }
+
+      // Handle common areas response
+      if (commonAreasResponse.status === "fulfilled" && !commonAreasResponse.value.error) {
+        console.log("Common areas API response:", commonAreasResponse.value)
+        setCommonAreas(
+          Array.isArray(commonAreasResponse.value.common_areas) ? commonAreasResponse.value.common_areas : [],
+        )
+      } else {
+        console.error("Error fetching common areas:", commonAreasResponse)
+        setCommonAreas([])
+      }
+    } catch (err) {
+      console.error("Error fetching data:", err)
+      setError("Failed to load users and phones")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  // Combine users and common areas into a single list
+  const allUsers = useMemo(() => {
+    const combined = [
+      ...users.map((user) => ({
+        ...user,
+        type: "user",
+        name: user.display_name || `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.name || user.email,
+        site: user.site_name || user.site || currentUserSite,
+        extension: user.extension_number || user.extension,
+        presence: user.presence_status || "available",
+        // Store both IDs for different API calls
+        user_id: user.id, // For presence API calls
+        phone_user_id: user.phone_user_id || user.id, // For phone API calls
+      })),
+      ...commonAreas.map((area) => ({
+        ...area,
+        type: "common_area",
+        name: area.name || area.display_name || "Common Area Phone",
+        site: area.site_name || area.site || currentUserSite,
+        extension: area.extension_number || area.extension,
+        presence: "available", // Common areas are always available
+        user_id: area.id,
+        phone_user_id: area.id,
+      })),
+    ]
+
+    console.log("Combined users and common areas:", combined)
+    return combined
+  }, [users, commonAreas, currentUserSite])
+
+  // Group users by site with filtering and sorting
   const groupedUsers = useMemo(() => {
     try {
       console.log("=== GROUPING USERS START ===")
-      console.log("Raw users from hook:", users)
-
-      // Ensure users is always an array using our ultra-safe function
-      const safeUsers = ultraSafeProcessArray(users, [])
-      console.log("Safe users after processing:", safeUsers)
-
-      // Validate each user object
-      const validUsers: any[] = []
-
-      // Use traditional for loop instead of forEach to avoid the error
-      for (let i = 0; i < safeUsers.length; i++) {
-        const user = safeUsers[i]
-        if (user && typeof user === "object" && user.id) {
-          validUsers.push(user)
-        } else {
-          console.warn("Invalid user object at index", i, ":", user)
-        }
-      }
-
-      console.log("Valid users after validation:", validUsers)
+      console.log("All users:", allUsers)
 
       // Filter by search term
-      const filtered: any[] = []
-      for (let i = 0; i < validUsers.length; i++) {
-        const user = validUsers[i]
-        try {
-          const searchLower = searchTerm.toLowerCase()
-          const matchesSearch =
-            (user.name && user.name.toLowerCase().includes(searchLower)) ||
-            (user.email && user.email.toLowerCase().includes(searchLower)) ||
-            (user.extension && user.extension.toString().includes(searchTerm)) ||
-            (user.phone_number && user.phone_number.includes(searchTerm))
+      const filtered = allUsers.filter((user) => {
+        if (!searchTerm) return true
 
-          if (matchesSearch) {
-            filtered.push(user)
-          }
-        } catch (err) {
-          console.warn("Error filtering user:", user, err)
-        }
-      }
+        const searchLower = searchTerm.toLowerCase()
+        return (
+          (user.name && user.name.toLowerCase().includes(searchLower)) ||
+          (user.email && user.email.toLowerCase().includes(searchLower)) ||
+          (user.extension && user.extension.toString().includes(searchTerm)) ||
+          (user.phone_number && user.phone_number.includes(searchTerm))
+        )
+      })
 
       console.log("Filtered users:", filtered)
 
       // Group by site
       const grouped: { [key: string]: any[] } = {}
-      for (let i = 0; i < filtered.length; i++) {
-        const user = filtered[i]
-        try {
-          const site = user.site || "Unknown Site"
-          if (!grouped[site]) {
-            grouped[site] = []
-          }
-          grouped[site].push(user)
-        } catch (err) {
-          console.warn("Error grouping user:", user, err)
+      filtered.forEach((user) => {
+        const site = user.site || "Main Office"
+        if (!grouped[site]) {
+          grouped[site] = []
         }
-      }
+        grouped[site].push(user)
+      })
 
       console.log("Grouped users:", grouped)
 
       // Sort users within each site
-      const siteKeys = Object.keys(grouped)
-      for (let i = 0; i < siteKeys.length; i++) {
-        const site = siteKeys[i]
-        try {
-          if (Array.isArray(grouped[site])) {
-            grouped[site].sort((a: any, b: any) => {
-              try {
-                if (!a || !b) return 0
-
-                if (sortBy === "extension") {
-                  const extA = Number.parseInt(a.extension) || 0
-                  const extB = Number.parseInt(b.extension) || 0
-                  return extA - extB
-                } else {
-                  const nameA = a.name || ""
-                  const nameB = b.name || ""
-                  return nameA.localeCompare(nameB)
-                }
-              } catch (err) {
-                console.warn("Error sorting users:", err)
-                return 0
-              }
-            })
+      Object.keys(grouped).forEach((site) => {
+        grouped[site].sort((a, b) => {
+          if (sortBy === "extension") {
+            const extA = Number.parseInt(a.extension) || 0
+            const extB = Number.parseInt(b.extension) || 0
+            return extA - extB
+          } else {
+            const nameA = a.name || ""
+            const nameB = b.name || ""
+            return nameA.localeCompare(nameB)
           }
-        } catch (err) {
-          console.warn("Error sorting site users:", site, err)
-        }
-      }
+        })
+      })
 
       // Sort sites: current user's site first, then alphabetical
       const sortedSites = Object.keys(grouped).sort((a, b) => {
@@ -254,14 +286,10 @@ export function UsersView() {
         return a.localeCompare(b)
       })
 
-      const result: { site: string; users: any[] }[] = []
-      for (let i = 0; i < sortedSites.length; i++) {
-        const site = sortedSites[i]
-        result.push({
-          site,
-          users: Array.isArray(grouped[site]) ? grouped[site] : [],
-        })
-      }
+      const result = sortedSites.map((site) => ({
+        site,
+        users: grouped[site] || [],
+      }))
 
       console.log("Final grouped result:", result)
       console.log("=== GROUPING USERS END ===")
@@ -270,7 +298,7 @@ export function UsersView() {
       console.error("Error grouping users:", error)
       return []
     }
-  }, [users, searchTerm, sortBy, currentUserSite])
+  }, [allUsers, searchTerm, sortBy, currentUserSite])
 
   const handleUserClick = (user: any) => {
     if (user && typeof user === "object") {
@@ -279,12 +307,19 @@ export function UsersView() {
     }
   }
 
+  const handleRefresh = () => {
+    fetchData(true) // Force refresh
+  }
+
   if (error) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Users</h2>
-          <Button onClick={refetch}>Retry</Button>
+          <h2 className="text-2xl font-bold">Users & Phones</h2>
+          <Button onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
         </div>
         <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
           <CardContent className="p-6">
@@ -300,6 +335,10 @@ export function UsersView() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Users & Phones</h2>
         <div className="flex items-center space-x-2">
+          <Button variant="outline" onClick={handleRefresh} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
           <Button variant="outline">
             <Filter className="h-4 w-4 mr-2" />
             Filter
@@ -372,7 +411,7 @@ export function UsersView() {
         </div>
       ) : (
         <div className="space-y-6">
-          {Array.isArray(groupedUsers) && groupedUsers.length > 0 ? (
+          {groupedUsers.length > 0 ? (
             groupedUsers.map(({ site, users: siteUsers }) => (
               <Card key={site}>
                 <CardHeader>
@@ -387,16 +426,19 @@ export function UsersView() {
                       )}
                     </CardTitle>
                     <Badge variant="outline">
-                      {Array.isArray(siteUsers) ? siteUsers.length : 0}{" "}
-                      {Array.isArray(siteUsers) && siteUsers.length === 1 ? "user" : "users"}
+                      {siteUsers.length} {siteUsers.length === 1 ? "user" : "users"}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {Array.isArray(siteUsers) && siteUsers.length > 0 ? (
+                  {siteUsers.length > 0 ? (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {siteUsers.map((user: any, index: number) => (
-                        <UserCard key={user?.id || `user-${index}`} user={user} onUserClick={handleUserClick} />
+                        <UserCard
+                          key={user?.user_id || user?.id || `user-${index}`}
+                          user={user}
+                          onUserClick={handleUserClick}
+                        />
                       ))}
                     </div>
                   ) : (
@@ -411,7 +453,7 @@ export function UsersView() {
                 <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No Users Found</h3>
                 <p className="text-muted-foreground">
-                  {users.length === 0
+                  {allUsers.length === 0
                     ? "No users are available in your organization."
                     : "No users match your search criteria."}
                 </p>

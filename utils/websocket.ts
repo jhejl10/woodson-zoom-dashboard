@@ -1,14 +1,8 @@
-import { WebSocketClient } from "../lib/websocket-client"
-
-// Singleton instance for the WebSocket client
-let wsClientInstance: WebSocketClient | null = null
+import { getWebSocketClient as getWSClient } from "../lib/websocket-client"
 
 /**
- * Get the WebSocket client instance (creates one if it doesn't exist)
+ * Get the WebSocket client instance (re-export from lib)
  */
-export function getWebSocketClient(): WebSocketClient {
-  if (!wsClientInstance) {
-    wsClientInstance = new WebSocketClient()
-  }
-  return wsClientInstance
+export function getWebSocketClient() {
+  return getWSClient()
 }

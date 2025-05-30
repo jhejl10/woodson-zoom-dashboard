@@ -5,11 +5,29 @@ import { CallQueuesView } from "./call-queues-view"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Building, Users, Phone } from "lucide-react"
-
-// This would be filtered to only show the current user's site
-const currentUserSite = "New York Office"
+import { useCurrentUser } from "@/hooks/use-current-user"
 
 export function MySiteView() {
+  // Get the current user's actual site
+  const { user: currentUser, loading } = useCurrentUser()
+  const currentUserSite = currentUser?.phone?.site_name || currentUser?.site_name || "Main Office"
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Loading your site...
+            </CardTitle>
+            <CardDescription>Please wait while we load your site information</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Site Header */}
@@ -36,11 +54,11 @@ export function MySiteView() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="users" className="space-y-4">
-          {/* This would be filtered to only show users from the current site */}
+          {/* This will automatically filter to show users from the current site */}
           <UsersView />
         </TabsContent>
         <TabsContent value="queues" className="space-y-4">
-          {/* This would be filtered to only show queues from the current site */}
+          {/* This will automatically filter to show queues from the current site */}
           <CallQueuesView />
         </TabsContent>
       </Tabs>
