@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server"
-import { getPhoneUsers, getSites, getCommonAreaPhones, getUserPresence } from "@/lib/zoom-api"
+import { NextResponse } from "next/headers"
+import { getPhoneUsers, getSites, getCommonAreaPhones, getUserPresence, checkDeskPhoneStatus } from "@/lib/zoom-api"
 
 export async function GET() {
   try {
@@ -21,9 +21,6 @@ export async function GET() {
     console.log("- Phone users:", Array.isArray(phoneUsers) ? phoneUsers.length : "not an array")
     console.log("- Sites:", Array.isArray(sites) ? sites.length : "not an array")
     console.log("- Common area phones:", Array.isArray(commonAreaPhones) ? commonAreaPhones.length : "not an array")
-
-    // Log raw common area phones for debugging
-    console.log("Raw common area phones data:", JSON.stringify(commonAreaPhones).slice(0, 500))
 
     // Create a site lookup map
     const siteMap = new Map()
@@ -71,10 +68,23 @@ export async function GET() {
 
           // Try to get presence status
           let presence = null
+          let presenceStatus = null
           try {
             presence = await getUserPresence(user.id)
+
+            // If user is offline, check if their desk phone is online
+            if (presence?.status === "offline") {
+              const isDeskPhoneOnline = await checkDeskPhoneStatus(user.id)
+              if (isDeskPhoneOnline) {
+                presence.status = "available"
+                presence.status_message = "Available (Desk Phone)"
+              }
+            }
+
+            presenceStatus = presence?.status || "unknown"
           } catch (error) {
             console.log(`Could not fetch presence for user ${user.id}`)
+            presenceStatus = "unknown"
           }
 
           const processedUser = {
@@ -92,7 +102,7 @@ export async function GET() {
             site: siteMap.get(user.site_id) || "Unknown Site",
             site_id: user.site_id,
             status: user.status || "active",
-            presence: presence?.status || "unknown",
+            presence: presenceStatus,
             presence_status: presence?.status_message || null,
             type: "user",
             avatar_url: user.avatar_url || null,
@@ -102,7 +112,9 @@ export async function GET() {
           }
 
           processedUsers.push(processedUser)
-          console.log(`Processed user: ${processedUser.name} - Ext: ${processedUser.extension}`)
+          console.log(
+            `Processed user: ${processedUser.name} - Ext: ${processedUser.extension} - Site: ${processedUser.site}`,
+          )
         } catch (error) {
           console.error("Error processing user:", user, error)
         }
@@ -118,8 +130,6 @@ export async function GET() {
             console.warn("Invalid common area phone object:", phone)
             continue
           }
-
-          console.log("Processing common area phone:", phone)
 
           // Extract extension number properly
           let extension = "No extension"
@@ -145,6 +155,7 @@ export async function GET() {
             }
           }
 
+          // Common area phones don't have presence status, so we set a default
           const processedPhone = {
             id: phone.id,
             name: phone.name || phone.display_name || `Common Area ${phone.id}`,
@@ -153,7 +164,7 @@ export async function GET() {
             site: siteMap.get(phone.site_id) || "Unknown Site",
             site_id: phone.site_id,
             status: phone.status || "active",
-            presence: "available", // Common area phones are typically always available
+            presence: "available", // Common area phones are always available
             presence_status: null,
             type: "common_area",
             avatar_url: null,
@@ -163,7 +174,9 @@ export async function GET() {
           }
 
           processedCommonAreaPhones.push(processedPhone)
-          console.log(`Processed common area: ${processedPhone.name} - Ext: ${processedPhone.extension}`)
+          console.log(
+            `Processed common area: ${processedPhone.name} - Ext: ${processedPhone.extension} - Site: ${processedPhone.site}`,
+          )
         } catch (error) {
           console.error("Error processing common area phone:", phone, error)
         }

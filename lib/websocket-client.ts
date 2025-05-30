@@ -52,23 +52,20 @@ class ZoomWebSocketClient extends EventEmitter {
     this.isConnecting = true
 
     try {
-      // In a real implementation, this would connect to Zoom's WebSocket endpoint
-      // For now, we'll simulate with a local WebSocket server
-      const wsUrl =
-        process.env.NODE_ENV === "production"
-          ? "wss://your-websocket-server.com/zoom-events"
-          : "ws://localhost:8080/zoom-events"
+      // Use the correct Zoom WebSocket URL
+      const wsUrl = "wss://ws.zoom.us/ws?subscriptionId=aZmzUONmRUqxJUwIf_kxHg"
 
+      console.log("Connecting to Zoom WebSocket:", wsUrl)
       this.ws = new WebSocket(wsUrl)
 
       this.ws.onopen = () => {
-        console.log("WebSocket connected")
+        console.log("WebSocket connected to Zoom")
         this.isConnecting = false
         this.reconnectAttempts = 0
         this.emit("connected")
         this.startHeartbeat()
 
-        // Send authentication message
+        // Send authentication message if needed
         this.send({
           type: "auth",
           data: { token: "zoom_access_token" },
@@ -78,6 +75,7 @@ class ZoomWebSocketClient extends EventEmitter {
       this.ws.onmessage = (event) => {
         try {
           const message: ZoomWebSocketEvent = JSON.parse(event.data)
+          console.log("Received WebSocket message:", message)
           this.handleMessage(message)
         } catch (error) {
           console.error("Error parsing WebSocket message:", error)
@@ -115,6 +113,7 @@ class ZoomWebSocketClient extends EventEmitter {
         this.emit("call_event", callEvent)
         break
       case "presence_event":
+        console.log("Received presence event:", message.data)
         this.emit("presence_event", message.data as PresenceEvent)
         break
       case "queue_event":
@@ -135,7 +134,7 @@ class ZoomWebSocketClient extends EventEmitter {
         this.send({ type: "heartbeat_ack", data: {} })
         break
       default:
-        console.log("Unknown message type:", message.type)
+        console.log("Unknown message type:", message.type, message)
     }
   }
 

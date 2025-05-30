@@ -182,8 +182,10 @@ export async function getCurrentUserPresence() {
 // User management functions
 export async function getPhoneUsers() {
   try {
-    const response = await makeZoomPhoneAPIRequest("/users?page_size=300")
-    console.log("Phone users response:", response)
+    console.log("Fetching phone users...")
+    // Corrected endpoint and page size
+    const response = await makeZoomPhoneAPIRequest("/users?page_size=100")
+    console.log("Phone users API response:", response)
 
     // Handle the response structure properly
     if (response.users && Array.isArray(response.users)) {
@@ -202,6 +204,7 @@ export async function getPhoneUsers() {
 
 export async function getUserPresence(userId: string) {
   try {
+    // Correct endpoint for user presence
     const response = await makeZoomAPIRequest(`/users/${userId}/presence_status`)
     return response
   } catch (error) {
@@ -225,6 +228,79 @@ export async function updateUserPresence(userId: string, status: string, statusM
   } catch (error) {
     console.error("Error updating user presence:", error)
     throw error
+  }
+}
+
+// Sites and locations
+export async function getSites() {
+  try {
+    console.log("Fetching sites...")
+    // Correct endpoint for sites
+    const response = await makeZoomPhoneAPIRequest("/sites?page_size=100")
+    console.log("Sites API response:", response)
+    return Array.isArray(response.sites) ? response.sites : []
+  } catch (error) {
+    console.error("Error fetching sites:", error)
+    return []
+  }
+}
+
+// Common area phones - CORRECT ENDPOINT
+export async function getCommonAreaPhones() {
+  try {
+    console.log("Fetching common area phones...")
+    // Correct endpoint for common area phones
+    const response = await makeZoomPhoneAPIRequest("/common_areas?page_size=100")
+    console.log("Common area phones response:", response)
+
+    // Handle the response structure
+    if (response.common_areas && Array.isArray(response.common_areas)) {
+      return response.common_areas
+    } else if (Array.isArray(response)) {
+      return response
+    } else {
+      console.warn("Unexpected common areas response structure:", response)
+      return []
+    }
+  } catch (error) {
+    console.error("Error fetching common area phones:", error)
+    return []
+  }
+}
+
+// Get phone devices
+export async function getPhoneDevices() {
+  try {
+    console.log("Fetching phone devices...")
+    // Correct endpoint for phone devices
+    const response = await makeZoomPhoneAPIRequest("/devices?page_size=100")
+    console.log("Phone devices response:", response)
+
+    return Array.isArray(response.devices) ? response.devices : []
+  } catch (error) {
+    console.error("Error fetching phone devices:", error)
+    return []
+  }
+}
+
+// Check if user's desk phone is online
+export async function checkDeskPhoneStatus(userId: string) {
+  try {
+    console.log(`Checking desk phone status for user ${userId}...`)
+    const response = await makeZoomPhoneAPIRequest(`/users/${userId}/devices?page_size=100`)
+    console.log(`Desk phone status for user ${userId}:`, response)
+
+    if (response.devices && Array.isArray(response.devices)) {
+      // Check if any desk phone is online
+      const onlineDevice = response.devices.find(
+        (device: any) => device.type === "desk_phone" && device.status === "online",
+      )
+      return !!onlineDevice
+    }
+    return false
+  } catch (error) {
+    console.error(`Error checking desk phone status for user ${userId}:`, error)
+    return false
   }
 }
 
@@ -398,60 +474,6 @@ export async function sendSMS(from: string, to: string, message: string) {
   } catch (error) {
     console.error("Error sending SMS:", error)
     throw error
-  }
-}
-
-// Sites and locations
-export async function getSites() {
-  try {
-    const response = await makeZoomPhoneAPIRequest("/sites?page_size=100")
-    console.log("Sites response:", response)
-    return Array.isArray(response.sites) ? response.sites : []
-  } catch (error) {
-    console.error("Error fetching sites:", error)
-    return []
-  }
-}
-
-// Common area phones - FIXED ENDPOINT
-export async function getCommonAreaPhones() {
-  try {
-    console.log("Fetching common area phones from /phone/common_areas...")
-
-    // Try the correct endpoint first
-    try {
-      const response = await makeZoomPhoneAPIRequest("/common_areas?page_size=300")
-      console.log("Common area phones response from /common_areas:", response)
-
-      // Handle various response structures
-      if (response.common_areas && Array.isArray(response.common_areas)) {
-        return response.common_areas
-      } else if (Array.isArray(response)) {
-        return response
-      }
-    } catch (error) {
-      console.error("Error with /common_areas endpoint, trying fallback:", error)
-    }
-
-    // Fallback to alternative endpoint
-    try {
-      const response = await makeZoomPhoneAPIRequest("/common_area_phones?page_size=300")
-      console.log("Common area phones response from /common_area_phones:", response)
-
-      if (response.common_area_phones && Array.isArray(response.common_area_phones)) {
-        return response.common_area_phones
-      } else if (Array.isArray(response)) {
-        return response
-      }
-    } catch (error) {
-      console.error("Error with fallback endpoint:", error)
-    }
-
-    console.warn("Could not retrieve common area phones from any endpoint")
-    return []
-  } catch (error) {
-    console.error("Error fetching common area phones:", error)
-    return []
   }
 }
 
