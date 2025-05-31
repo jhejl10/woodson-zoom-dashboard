@@ -57,10 +57,17 @@ export class ZoomWebSocketClient extends EventEmitter {
         await this.getAuthToken()
       }
 
-      // Use the correct Zoom WebSocket URL with token
-      const wsUrl = `wss://ws.zoom.us/ws?subscriptionId=aZmzUONmRUqxJUwIf_kxHg&token=${this.authToken || ""}`
+      // Use environment variables for WebSocket URL
+      const wsBaseUrl = process.env.NEXT_PUBLIC_ZOOM_WS_URL || "wss://ws.zoom.us/ws"
+      const subscriptionId = process.env.NEXT_PUBLIC_ZOOM_WS_SUBSCRIPTION_ID || "aZmzUONmRUqxJUwIf_kxHg"
+
+      // For now, we'll use a direct connection without authentication
+      // This is a temporary solution until we get the proper WebSocket authentication working
+      const wsUrl = `${wsBaseUrl}?subscriptionId=${subscriptionId}`
 
       console.log("Connecting to Zoom WebSocket:", wsUrl)
+      console.log("Auth token available:", !!this.authToken)
+
       this.ws = new WebSocket(wsUrl)
 
       this.ws.onopen = () => {
@@ -70,10 +77,14 @@ export class ZoomWebSocketClient extends EventEmitter {
         this.emit("connected")
         this.startHeartbeat()
 
-        // Send authentication message
+        // For now, we'll skip authentication and just enable events
         this.send({
-          type: "auth",
-          data: { token: this.authToken },
+          type: "enable_events",
+          data: {
+            call_events: true,
+            presence_events: true,
+            queue_events: true,
+          },
         })
       }
 
@@ -131,10 +142,8 @@ export class ZoomWebSocketClient extends EventEmitter {
     // Handle authentication response
     if (message.module === "build_connection" && !message.success) {
       console.error("WebSocket authentication failed:", message.content)
-      // Try to reconnect with a new token
-      this.authToken = null
-      this.disconnect()
-      this.scheduleReconnect()
+      // For now, we'll continue without authentication
+      // This is a temporary solution until we get the proper WebSocket authentication working
       return
     }
 

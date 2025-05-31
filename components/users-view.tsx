@@ -187,6 +187,7 @@ export function UsersView() {
     try {
       setLoading(true)
       setError(null)
+      setDebugInfo("Fetching data...\n")
 
       const refreshParam = forceRefresh ? "?refresh=true" : ""
 
@@ -202,6 +203,7 @@ export function UsersView() {
         setUsers(Array.isArray(usersResponse.value.users) ? usersResponse.value.users : [])
 
         // Debug info
+        setDebugInfo((prev) => prev + `\nUsers loaded: ${usersResponse.value.users?.length || 0}`)
         if (usersResponse.value.users && usersResponse.value.users.length > 0) {
           const firstUser = usersResponse.value.users[0]
           setDebugInfo((prev) => prev + `\nFirst user: id=${firstUser.id}, phone_user_id=${firstUser.phone_user_id}`)
@@ -215,22 +217,27 @@ export function UsersView() {
       // Handle common areas response
       if (commonAreasResponse.status === "fulfilled" && !commonAreasResponse.value.error) {
         console.log("Common areas API response:", commonAreasResponse.value)
-        setCommonAreas(
-          Array.isArray(commonAreasResponse.value.common_areas) ? commonAreasResponse.value.common_areas : [],
-        )
+        const commonAreasData = commonAreasResponse.value.common_areas || []
+        setCommonAreas(Array.isArray(commonAreasData) ? commonAreasData : [])
 
         // Debug info
-        if (commonAreasResponse.value.common_areas && commonAreasResponse.value.common_areas.length > 0) {
-          const firstCommonArea = commonAreasResponse.value.common_areas[0]
+        setDebugInfo((prev) => prev + `\nCommon areas loaded: ${commonAreasData.length}`)
+        if (commonAreasData.length > 0) {
+          const firstCommonArea = commonAreasData[0]
           setDebugInfo(
-            (prev) =>
-              prev + `\nFirst common area: id=${firstCommonArea.id}, phone_user_id=${firstCommonArea.phone_user_id}`,
+            (prev) => prev + `\nFirst common area: id=${firstCommonArea.id}, name=${firstCommonArea.name || "unnamed"}`,
           )
+        } else {
+          setDebugInfo((prev) => prev + `\nNo common areas found in response`)
         }
       } else {
         console.error("Error fetching common areas:", commonAreasResponse)
         setCommonAreas([])
-        setDebugInfo((prev) => prev + `\nError fetching common areas: ${JSON.stringify(commonAreasResponse)}`)
+        if (commonAreasResponse.status === "rejected") {
+          setDebugInfo((prev) => prev + `\nCommon areas request rejected: ${commonAreasResponse.reason}`)
+        } else {
+          setDebugInfo((prev) => prev + `\nError fetching common areas: ${JSON.stringify(commonAreasResponse.value)}`)
+        }
       }
     } catch (err) {
       console.error("Error fetching data:", err)
@@ -248,6 +255,8 @@ export function UsersView() {
 
   // Combine users and common areas into a single list
   const allUsers = useMemo(() => {
+    setDebugInfo((prev) => prev + `\nCombining ${users.length} users and ${commonAreas.length} common areas`)
+
     const combined = [
       ...users.map((user) => ({
         ...user,
@@ -281,6 +290,7 @@ export function UsersView() {
     try {
       console.log("=== GROUPING USERS START ===")
       console.log("All users:", allUsers)
+      setDebugInfo((prev) => prev + `\nGrouping ${allUsers.length} total users`)
 
       // Filter by search term
       const filtered = allUsers.filter((user) => {
@@ -308,6 +318,7 @@ export function UsersView() {
       })
 
       console.log("Grouped users:", grouped)
+      setDebugInfo((prev) => prev + `\nSites found: ${Object.keys(grouped).join(", ")}`)
 
       // Sort users within each site
       Object.keys(grouped).forEach((site) => {
@@ -341,6 +352,7 @@ export function UsersView() {
       return result
     } catch (error) {
       console.error("Error grouping users:", error)
+      setDebugInfo((prev) => prev + `\nError grouping users: ${error}`)
       return []
     }
   }, [allUsers, searchTerm, sortBy, currentUserSite])

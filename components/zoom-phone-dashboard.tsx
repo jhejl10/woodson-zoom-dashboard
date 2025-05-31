@@ -36,7 +36,6 @@ import { RealTimeNotifications } from "./real-time-notifications"
 import { ConnectionStatus } from "./connection-status"
 import { Toaster } from "sonner"
 import { ParkedCallsDisplay } from "./parked-calls-display"
-import { getWebSocketClient } from "../lib/websocket-client"
 
 const navigationItems = [
   {
@@ -207,35 +206,14 @@ function renderActiveView(activeTab: string) {
   }
 }
 
-// Change from default export to named export
 export function ZoomPhoneDashboard() {
   const [activeTab, setActiveTab] = useState("users")
   const [phoneAccess, setPhoneAccess] = useState<{ hasAccess: boolean; error: string | null } | null>(null)
   const [dataLoaded, setDataLoaded] = useState(false)
-  const [realTimeEnabled, setRealTimeEnabled] = useState(true) // Always enable real-time features
+  const [realTimeEnabled, setRealTimeEnabled] = useState(true)
 
   // Initialize error handlers
   useErrorHandlers()
-
-  // Initialize WebSocket connection
-  useEffect(() => {
-    console.log("Initializing WebSocket connection...")
-    try {
-      const wsClient = getWebSocketClient()
-      console.log("WebSocket client obtained:", wsClient)
-
-      // Connect the WebSocket
-      wsClient.connect()
-      console.log("WebSocket connection initiated")
-
-      return () => {
-        console.log("Cleaning up WebSocket connection...")
-        wsClient.disconnect()
-      }
-    } catch (error) {
-      console.error("Error initializing WebSocket:", error)
-    }
-  }, [])
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -243,13 +221,11 @@ export function ZoomPhoneDashboard() {
         const response = await fetch("/api/zoom/check-phone-access")
         const data = await response.json()
         setPhoneAccess(data)
-
-        // Mark data as loaded after initial check
         setDataLoaded(true)
       } catch (error) {
         console.error("Error checking phone access:", error)
         setPhoneAccess({ hasAccess: false, error: "Failed to check phone access" })
-        setDataLoaded(true) // Still mark as loaded even if there's an error
+        setDataLoaded(true)
       }
     }
     checkAccess()
@@ -336,7 +312,7 @@ export function ZoomPhoneDashboard() {
         </SidebarInset>
         <SmartCallDock />
 
-        {/* Add real-time notifications - always enabled */}
+        {/* Real-time notifications now use webhooks */}
         <RealTimeNotifications enabled={true} dataLoaded={true} />
         <Toaster position="top-right" />
         <ParkedCallsDisplay />
