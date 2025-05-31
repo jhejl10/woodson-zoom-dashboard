@@ -116,7 +116,7 @@ function UserCard({ user, onUserClick }: { user: any; onUserClick: (user: any) =
                         <strong>ID:</strong> {user?.id || "N/A"}
                       </div>
                       <div>
-                        <strong>Phone User ID:</strong> {user?.phone_user_id || "N/A"}
+                        <strong>Site:</strong> {user?.site || "N/A"}
                       </div>
                       <div>
                         <strong>Type:</strong> {user?.type || "N/A"}
@@ -180,7 +180,7 @@ export function UsersView() {
 
   // Get current user to determine their site
   const { user: currentUser } = useCurrentUser()
-  const currentUserSite = currentUser?.phone?.site_name || currentUser?.site_name || "Main Office"
+  const currentUserSite = currentUser?.phone?.site?.name || currentUser?.site?.name || "Main Office"
 
   // Fetch users and common areas from cached API
   const fetchData = async (forceRefresh = false) => {
@@ -194,7 +194,7 @@ export function UsersView() {
       // Fetch both users and common areas in parallel
       const [usersResponse, commonAreasResponse] = await Promise.allSettled([
         fetch(`/api/phone/users${refreshParam}`).then((res) => res.json()),
-        fetch(`/phone/common-areas${refreshParam}`).then((res) => res.json()),
+        fetch(`/phone/common_areas${refreshParam}`).then((res) => res.json()),
       ])
 
       // Handle users response
@@ -206,7 +206,7 @@ export function UsersView() {
         setDebugInfo((prev) => prev + `\nUsers loaded: ${usersResponse.value.users?.length || 0}`)
         if (usersResponse.value.users && usersResponse.value.users.length > 0) {
           const firstUser = usersResponse.value.users[0]
-          setDebugInfo((prev) => prev + `\nFirst user: id=${firstUser.id}, phone_user_id=${firstUser.phone_user_id}`)
+          setDebugInfo((prev) => prev + `\nFirst user: id=${firstUser.id}, site=${firstUser.site?.name || "no site"}`)
         }
       } else {
         console.error("Error fetching users:", usersResponse)
@@ -225,7 +225,11 @@ export function UsersView() {
         if (commonAreasData.length > 0) {
           const firstCommonArea = commonAreasData[0]
           setDebugInfo(
-            (prev) => prev + `\nFirst common area: id=${firstCommonArea.id}, name=${firstCommonArea.name || "unnamed"}`,
+            (prev) =>
+              prev +
+              `\nFirst common area: id=${firstCommonArea.id}, name=${firstCommonArea.name || "unnamed"}, site=${
+                firstCommonArea.site?.name || "no site"
+              }`,
           )
         } else {
           setDebugInfo((prev) => prev + `\nNo common areas found in response`)
@@ -262,22 +266,20 @@ export function UsersView() {
         ...user,
         type: "user",
         name: user.display_name || `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.name || user.email,
-        site: user.site_name || user.site || currentUserSite,
+        site: user.site?.name || currentUserSite, // Use site.name from API response
         extension: user.extension_number || user.extension,
         presence: user.presence_status || "available",
-        // Store both IDs for different API calls
-        user_id: user.id, // For presence API calls
-        phone_user_id: user.phone_user_id || user.id, // For phone API calls
+        // Use the regular ID for all operations
+        user_id: user.id,
       })),
       ...commonAreas.map((area) => ({
         ...area,
         type: "common_area",
         name: area.name || area.display_name || "Common Area Phone",
-        site: area.site_name || area.site || currentUserSite,
+        site: area.site?.name || currentUserSite, // Use site.name from API response
         extension: area.extension_number || area.extension,
         presence: "available", // Common areas are always available
         user_id: area.id,
-        phone_user_id: area.id,
       })),
     ]
 

@@ -86,30 +86,96 @@ export async function POST(request: NextRequest) {
       events.splice(50)
     }
 
-    // Handle specific event types
+    // Handle specific event types based on Zoom documentation
     switch (eventType) {
-      case "phone.call_started":
-      case "phone.call_ended":
-      case "phone.call_transferred":
-        console.log("Call event received:", eventData)
+      // Phone Call Events
+      case "phone.call_log_completed":
+        console.log("Call completed event received:", eventData)
         break
 
+      case "phone.call_ended":
+        console.log("Call ended event received:", eventData)
+        break
+
+      case "phone.call_started":
+        console.log("Call started event received:", eventData)
+        break
+
+      case "phone.call_transferred":
+        console.log("Call transferred event received:", eventData)
+        break
+
+      case "phone.call_held":
+        console.log("Call held event received:", eventData)
+        break
+
+      case "phone.call_unheld":
+        console.log("Call unheld event received:", eventData)
+        break
+
+      // Phone Voicemail Events
+      case "phone.voicemail_received":
+        console.log("Voicemail received event:", eventData)
+        break
+
+      case "phone.voicemail_deleted":
+        console.log("Voicemail deleted event:", eventData)
+        break
+
+      // Phone SMS Events
+      case "phone.sms_received":
+        console.log("SMS received event:", eventData)
+        break
+
+      case "phone.sms_sent":
+        console.log("SMS sent event:", eventData)
+        break
+
+      case "phone.sms_failed":
+        console.log("SMS failed event:", eventData)
+        break
+
+      // User Presence Events
       case "user.presence_status_updated":
-        console.log("Presence event received:", eventData)
+        console.log("Presence status updated event:", eventData)
         // Update cache if needed
         await updatePresenceCache(eventData.object.id, {
           status: eventData.object.presence_status,
-          status_message: eventData.object.status_message,
         })
         break
 
-      case "phone.voicemail_received":
-        console.log("Voicemail event received:", eventData)
+      case "user.personal_notes_updated":
+        console.log("Personal notes (status message) updated event:", eventData)
+        // Update cache if needed
+        await updatePresenceCache(eventData.object.id, {
+          status_message: eventData.object.personal_notes,
+        })
         break
 
-      case "phone.sms_received":
-      case "phone.sms_sent":
-        console.log("SMS event received:", eventData)
+      // Phone User Events
+      case "phone.user_created":
+        console.log("Phone user created event:", eventData)
+        break
+
+      case "phone.user_updated":
+        console.log("Phone user updated event:", eventData)
+        break
+
+      case "phone.user_deleted":
+        console.log("Phone user deleted event:", eventData)
+        break
+
+      // Phone Common Area Events
+      case "phone.common_area_created":
+        console.log("Common area created event:", eventData)
+        break
+
+      case "phone.common_area_updated":
+        console.log("Common area updated event:", eventData)
+        break
+
+      case "phone.common_area_deleted":
+        console.log("Common area deleted event:", eventData)
         break
 
       default:
@@ -125,9 +191,11 @@ export async function POST(request: NextRequest) {
 
 function getEventKey(eventType: string): string {
   if (eventType.startsWith("phone.call_")) return "call_events"
-  if (eventType.includes("presence")) return "presence_events"
+  if (eventType.includes("presence") || eventType.includes("personal_notes")) return "presence_events"
   if (eventType.includes("voicemail")) return "voicemail_events"
   if (eventType.includes("sms")) return "sms_events"
+  if (eventType.includes("user_")) return "user_events"
+  if (eventType.includes("common_area")) return "common_area_events"
   return "other_events"
 }
 
